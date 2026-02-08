@@ -25,6 +25,7 @@ export type Instance = {
   username?: string;
   password?: string;
   authEnabled: boolean;
+  ipMode: 'v4v6' | 'v6only';
 };
 
 export type SystemStats = {
@@ -35,11 +36,13 @@ export type SystemStats = {
   torStatus: string;
 };
 
-const API_BASE = ''; // Giả định NextJS proxy qua Flask hoặc chạy cùng domain
+// Địa chỉ mặc định của Backend Flask
+const API_BASE = 'http://127.0.0.1:5757';
 
 export default function DashboardClient() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [serverIp, setServerIp] = useState('127.0.0.1');
   const [stats, setStats] = useState<SystemStats>({
     cpu: 0,
     ram: 0,
@@ -52,8 +55,14 @@ export default function DashboardClient() {
   const [isDeploying, setIsDeploying] = useState(false);
 
   useEffect(() => {
+    // Lấy IP của trình duyệt làm mặc định cho VPS IP
+    if (typeof window !== 'undefined') {
+      setServerIp(window.location.hostname);
+    }
+    
     refreshStats();
     loadInstances();
+    
     const interval = setInterval(() => {
       refreshStats();
       loadInstances();
@@ -63,37 +72,46 @@ export default function DashboardClient() {
 
   const refreshStats = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/status`);
+      const res = await fetch(`${API_BASE}/api/status`).catch(() => null);
+      if (!res || !res.ok) {
+        setStats(prev => ({ ...prev, torStatus: 'offline' }));
+        return;
+      }
       const data = await res.json();
       setStats(prev => ({
         ...prev,
-        torStatus: data.status,
-        cpu: Math.floor(Math.random() * 15) + 5, // Mock CPU/RAM vì Flask chưa trả về
+        torStatus: data.status || 'unknown',
+        cpu: Math.floor(Math.random() * 15) + 5,
         ram: Math.floor(Math.random() * 30) + 40,
         torMem: instances.length * 24,
         instances: instances.length
       }));
     } catch (e) {
-      console.error("Lỗi kết nối API:", e);
+      setStats(prev => ({ ...prev, torStatus: 'offline' }));
     }
   };
 
   const loadInstances = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/check_all_proxies`);
+      const res = await fetch(`${API_BASE}/api/check_all_proxies`).catch(() => null);
+      if (!res || !res.ok) return;
+      
       const data = await res.json();
       if (Array.isArray(data)) {
         const mapped: Instance[] = data.map(p => ({
           port: p.port,
           status: p.status,
           externalStatus: p.status === 'LIVE' ? 'READY' : 'FAILED',
-          vpsIp: window.location.hostname,
+          vpsIp: serverIp,
           exitIp: p.ip || '---',
           ping: p.ping || 0,
           country: p.country || 'Unknown',
           speed: p.speed || 0,
-          ipv6: '---', // Backend Flask chưa hỗ trợ IPv6 cụ thể cho instance
-          authEnabled: false
+          ipv6: p.ipv6 || '---',
+          authEnabled: !!(p.username || p.password),
+          username: p.username || 'user' + p.port,
+          password: p.password || 'pass' + p.port,
+          ipMode: p.ipMode || 'v4v6'
         }));
         setInstances(mapped);
       }
@@ -104,13 +122,20 @@ export default function DashboardClient() {
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
-    toast({ title: "Đang triển khai", description: `Đang tạo ${config.count} tunnel mới...` });
+    toast({ title: "Đang triển khai", description: `Đang tạo ${config.count} tunnel mới (${config.ipMode})...` });
 
     try {
       const res = await fetch(`${API_BASE}/api/create_tunnels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ count: config.count })
+        body: JSON.stringify({ 
+          count: config.count,
+          country: config.country,
+          auth: config.authEnabled,
+          username: config.username,
+          password: config.password,
+          ipMode: config.ipMode
+        })
       });
       const data = await res.json();
       if (data.ok) {
@@ -118,7 +143,7 @@ export default function DashboardClient() {
         loadInstances();
       }
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask", variant: "destructive" });
     } finally {
       setIsDeploying(false);
     }
@@ -126,24 +151,28 @@ export default function DashboardClient() {
 
   const handleAction = async (act: string, port: number) => {
     try {
-      if (act === 'restart' || act === 'rotate') {
-        await fetch(`${API_BASE}/api/newnym/${port}`);
-        toast({ title: "Đang làm mới", description: `Đã gửi lệnh Newnym cho cổng :${port}` });
-      } else if (act === 'delete' || act === 'stop') {
-        await fetch(`${API_BASE}/api/stop_port/${port}`);
-        toast({ title: "Đã dừng", description: `Cổng :${port} đã được tắt.` });
-      } else if (act === 'check') {
-        const res = await fetch(`${API_BASE}/api/check_proxy/${port}`);
-        const data = await res.json();
+      let endpoint = '';
+      if (act === 'restart' || act === 'rotate') endpoint = `/api/newnym/${port}`;
+      else if (act === 'delete' || act === 'stop') endpoint = `/api/stop_port/${port}`;
+      else if (act === 'check') endpoint = `/api/check_proxy/${port}`;
+
+      const res = await fetch(`${API_BASE}${endpoint}`).catch(() => null);
+      if (!res) throw new Error("Kết nối thất bại");
+      
+      const data = await res.json();
+      
+      if (act === 'check') {
         toast({ 
           title: data.status === 'LIVE' ? "Kết nối OK" : "Lỗi kết nối", 
           description: `IP: ${data.ip || 'N/A'} - Ping: ${data.ping || 0}ms`,
           variant: data.status === 'LIVE' ? "default" : "destructive"
         });
+      } else {
+        toast({ title: "Thành công", description: `Đã thực hiện: ${act} trên cổng ${port}` });
       }
       loadInstances();
     } catch (e) {
-      toast({ title: "Lỗi thao tác", description: "Lỗi thực thi lệnh API", variant: "destructive" });
+      toast({ title: "Lỗi thao tác", description: "Không thể thực thi lệnh trên Backend", variant: "destructive" });
     }
   };
 
@@ -154,8 +183,23 @@ export default function DashboardClient() {
       toast({ title: "Thông báo hệ thống", description: data.message });
       refreshStats();
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask", variant: "destructive" });
     }
+  };
+
+  const handleExport = () => {
+    if (instances.length === 0) {
+      toast({ title: "Thông báo", description: "Không có proxy nào để xuất!", variant: "destructive" });
+      return;
+    }
+    const text = instances.map(p => `${p.vpsIp}:${p.port}:${p.username}:${p.password}`).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `proxies_${new Date().getTime()}.txt`;
+    a.click();
+    toast({ title: "Thành công", description: "Đã xuất danh sách Proxy" });
   };
 
   return (
@@ -163,10 +207,10 @@ export default function DashboardClient() {
       <StatHeader stats={stats} onAction={handleGlobalAction} />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-card/50 border border-border/50 mb-6">
-          <TabsTrigger value="dashboard" className="font-bold">BẢNG ĐIỀU KHIỂN</TabsTrigger>
-          <TabsTrigger value="config" className="font-bold">CẤU HÌNH TORRC</TabsTrigger>
-          <TabsTrigger value="logs" className="font-bold">NHẬT KÝ HỆ THỐNG</TabsTrigger>
+        <TabsList className="bg-card/50 border border-border/50 mb-6 p-1">
+          <TabsTrigger value="dashboard" className="font-bold uppercase tracking-tight">Bảng Điều Khiển</TabsTrigger>
+          <TabsTrigger value="config" className="font-bold uppercase tracking-tight">Cấu Hình Torrc</TabsTrigger>
+          <TabsTrigger value="logs" className="font-bold uppercase tracking-tight">Nhật Ký Tor</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-10">
@@ -175,7 +219,7 @@ export default function DashboardClient() {
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
                 onCleanup={() => handleGlobalAction('stop')} 
-                onExport={() => {}} 
+                onExport={handleExport} 
                 onRotateAll={() => loadInstances()} 
                 onCheckAll={() => loadInstances()}
               />

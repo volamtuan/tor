@@ -1,13 +1,15 @@
+
 "use client"
 
 import React, { useState } from 'react';
-import { Plus, Loader2, Globe, Shield, User, Key } from 'lucide-react';
+import { Plus, Loader2, Globe, Shield, User, Key, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export interface DeployConfig {
   count: number;
@@ -15,6 +17,7 @@ export interface DeployConfig {
   authEnabled: boolean;
   username?: string;
   password?: string;
+  ipMode: 'v4v6' | 'v6only';
 }
 
 interface InstanceManagerProps {
@@ -30,29 +33,28 @@ const COUNTRIES = [
   'Japan',
   'France',
   'Singapore',
-  'Canada',
-  'United Kingdom',
-  'Netherlands'
+  'Canada'
 ];
 
 export function InstanceManager({ onDeploy, isDeploying }: InstanceManagerProps) {
   const [count, setCount] = useState(1);
-  const [country, setCountry] = useState('Random');
+  const [country, setCountry] = useState('Vietnam');
   const [authEnabled, setAuthEnabled] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [ipMode, setIpMode] = useState<'v4v6' | 'v6only'>('v4v6');
 
   return (
     <Card className="glass-card shadow-2xl border-primary/20">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
           <Plus className="w-5 h-5 text-primary" />
-          Quản Lý Triển Khai
+          Triển Khai Proxy
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Số Lượng Cổng</Label>
+          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Số lượng instance</Label>
           <Input 
             type="number" 
             min={1} 
@@ -65,7 +67,7 @@ export function InstanceManager({ onDeploy, isDeploying }: InstanceManagerProps)
 
         <div className="space-y-2">
           <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-            <Globe className="w-3 h-3" /> Quốc Gia
+            <Globe className="w-3 h-3" /> Khu Vực (Quốc Gia)
           </Label>
           <Select value={country} onValueChange={setCountry}>
             <SelectTrigger className="bg-background/50 border-border text-white">
@@ -79,10 +81,26 @@ export function InstanceManager({ onDeploy, isDeploying }: InstanceManagerProps)
           </Select>
         </div>
 
+        <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
+          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 mb-2">
+            <Network className="w-3 h-3" /> Chế độ địa chỉ IP
+          </Label>
+          <RadioGroup value={ipMode} onValueChange={(v: any) => setIpMode(v)} className="flex gap-4">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="v4v6" id="v4v6" className="border-primary text-primary" />
+              <Label htmlFor="v4v6" className="text-xs text-white cursor-pointer">IPv4 + IPv6</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="v6only" id="v6only" className="border-primary text-primary" />
+              <Label htmlFor="v6only" className="text-xs text-white cursor-pointer">Chỉ IPv6</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
         <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
-            <Label className="text-sm font-bold text-white cursor-pointer" htmlFor="auth-mode">Xác Thực (Auth)</Label>
+            <Label className="text-sm font-bold text-white cursor-pointer" htmlFor="auth-mode">Xác thực (Auth)</Label>
           </div>
           <Switch id="auth-mode" checked={authEnabled} onCheckedChange={setAuthEnabled} />
         </div>
@@ -92,7 +110,7 @@ export function InstanceManager({ onDeploy, isDeploying }: InstanceManagerProps)
             <div className="relative">
               <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input 
-                placeholder="Tên đăng nhập (để trống để tự tạo)"
+                placeholder="User (trống để tự tạo)"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="pl-10 bg-background/50 border-border text-xs"
@@ -101,7 +119,7 @@ export function InstanceManager({ onDeploy, isDeploying }: InstanceManagerProps)
             <div className="relative">
               <Key className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input 
-                placeholder="Mật khẩu (để trống để tự tạo)"
+                placeholder="Pass (trống để tự tạo)"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -112,7 +130,7 @@ export function InstanceManager({ onDeploy, isDeploying }: InstanceManagerProps)
         )}
 
         <Button 
-          onClick={() => onDeploy({ count, country, authEnabled, username, password })} 
+          onClick={() => onDeploy({ count, country, authEnabled, username, password, ipMode })} 
           disabled={isDeploying}
           className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold tracking-tight shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5"
         >
