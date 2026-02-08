@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { StatHeader } from '@/components/StatHeader';
-import { InstanceManager } from '@/components/InstanceManager';
+import { InstanceManager, DeployConfig } from '@/components/InstanceManager';
 import { ProxyTable } from '@/components/ProxyTable';
 import { QuickTools } from '@/components/QuickTools';
 import { Toaster } from '@/components/ui/toaster';
@@ -18,8 +18,9 @@ export type Instance = {
   country: string;
   speed: number;
   ipv6: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
+  authEnabled: boolean;
 };
 
 export type SystemStats = {
@@ -56,25 +57,33 @@ export default function DashboardClient() {
     });
   };
 
-  const generateAuth = () => {
+  const generateRandomAuth = () => {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     const user = "tor_" + Array.from({ length: 4 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
     const pass = Array.from({ length: 8 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
     return { user, pass };
   };
 
-  const handleDeploy = (count: number) => {
+  const handleDeploy = (config: DeployConfig) => {
     setIsDeploying(true);
     toast({
-      title: "Deploying Instances",
-      description: `Starting ${count} new Tor proxy tunnel(s) with custom auth...`,
+      title: "Đang triển khai",
+      description: `Khởi tạo ${config.count} tunnel Tor mới tại ${config.country === 'Random' ? 'Quốc gia ngẫu nhiên' : config.country}...`,
     });
 
     setTimeout(() => {
       const vpsIpBase = "103.153.64.";
-      const newInstances: Instance[] = Array.from({ length: count }).map((_, i) => {
+      const newInstances: Instance[] = Array.from({ length: config.count }).map((_, i) => {
         const port = 8000 + instances.length + i;
-        const { user, pass } = generateAuth();
+        let username = config.username;
+        let password = config.password;
+        
+        if (config.authEnabled && (!username || !password)) {
+          const randomAuth = generateRandomAuth();
+          username = username || randomAuth.user;
+          password = password || randomAuth.pass;
+        }
+
         return {
           port,
           status: 'LIVE',
@@ -82,18 +91,19 @@ export default function DashboardClient() {
           vpsIp: vpsIpBase + (Math.floor(Math.random() * 254) + 1),
           exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
           ping: Math.floor(Math.random() * 300) + 50,
-          country: ['United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 6)],
+          country: config.country === 'Random' ? ['United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 6)] : config.country,
           speed: parseFloat((Math.random() * 200 + 20).toFixed(2)),
           ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
-          username: user,
-          password: pass
+          username,
+          password,
+          authEnabled: config.authEnabled
         };
       });
       setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
       setIsDeploying(false);
       toast({
-        title: "Deployment Complete",
-        description: `Successfully initialized ${count} instance(s) with secure credentials.`,
+        title: "Triển khai hoàn tất",
+        description: `Đã kích hoạt thành công ${config.count} instance.`,
       });
     }, 2000);
   };
@@ -101,7 +111,6 @@ export default function DashboardClient() {
   const checkConnectivity = (port: number) => {
     setInstances(prev => prev.map(i => i.port === port ? { ...i, externalStatus: 'TESTING' } : i));
     
-    // Simulate external probe to google.com via proxy
     setTimeout(() => {
       const isSuccess = Math.random() > 0.15;
       setInstances(prev => prev.map(i => i.port === port ? { 
@@ -111,9 +120,9 @@ export default function DashboardClient() {
       } : i));
       
       if (isSuccess) {
-        toast({ title: "External Access OK", description: `Port :${port} is reachable from outside.` });
+        toast({ title: "Kết nối OK", description: `Cổng :${port} đã thông mạng quốc tế.` });
       } else {
-        toast({ title: "Probe Failed", description: `Port :${port} failed external connectivity check.`, variant: "destructive" });
+        toast({ title: "Lỗi kết nối", description: `Cổng :${port} không thể truy cập từ bên ngoài.`, variant: "destructive" });
       }
     }, 2000);
   };
@@ -121,58 +130,61 @@ export default function DashboardClient() {
   const handleAction = (act: string, port: number) => {
     if (act === 'delete') {
       setInstances(prev => prev.filter(i => i.port !== port));
-      toast({ title: "Instance Removed", description: `Port :${port} deleted.` });
+      toast({ title: "Đã xóa", description: `Cổng :${port} đã bị gỡ bỏ.` });
     } else if (act === 'restart') {
       setInstances(prev => prev.map(i => i.port === port ? { ...i, status: 'LIVE', externalStatus: 'WAITING', ping: Math.floor(Math.random() * 100) + 50 } : i));
-      toast({ title: "Instance Restarted", description: `Rebooting port :${port}...` });
+      toast({ title: "Đã khởi động lại", description: `Đang làm mới cổng :${port}...` });
     } else if (act === 'check') {
       checkConnectivity(port);
     } else if (act === 'rotate') {
-      const { user, pass } = generateAuth();
+      const randomAuth = generateRandomAuth();
       setInstances(prev => prev.map(i => i.port === port ? { 
         ...i, 
         exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
         ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
-        username: user,
-        password: pass
+        username: i.authEnabled ? randomAuth.user : undefined,
+        password: i.authEnabled ? randomAuth.pass : undefined
       } : i));
-      toast({ title: "Credentials Rotated", description: `New IP and Auth assigned to :${port}` });
+      toast({ title: "Đã xoay IP/IPv6", description: `Cổng :${port} đã nhận định danh mới.` });
     }
   };
 
   const handleGlobalRotate = () => {
     setInstances(prev => prev.map(i => {
-      const { user, pass } = generateAuth();
+      const randomAuth = generateRandomAuth();
       return { 
         ...i, 
         exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
         ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
-        username: user,
-        password: pass
+        username: i.authEnabled ? randomAuth.user : undefined,
+        password: i.authEnabled ? randomAuth.pass : undefined
       };
     }));
-    toast({ title: "Full System Rotation", description: "All instances rotated IPs & Auth keys." });
+    toast({ title: "Xoay toàn bộ hệ thống", description: "Tất cả các proxy đã được đổi IP và thông tin xác thực." });
   };
 
   const handleGlobalCheck = () => {
-    toast({ title: "Global Probe Started", description: "Testing all active tunnels..." });
+    toast({ title: "Bắt đầu kiểm tra", description: "Đang quét trạng thái tất cả tunnel..." });
     instances.forEach(i => checkConnectivity(i.port));
   };
 
   const handleCleanup = () => {
     setInstances([]);
-    toast({ title: "System Wipe", description: "All instances stopped.", variant: "destructive" });
+    toast({ title: "Dọn dẹp hệ thống", description: "Tất cả các tiến trình Tor đã bị dừng.", variant: "destructive" });
   };
 
   const handleExport = () => {
-    const data = instances.map(i => `${i.vpsIp}:${i.port}:${i.username}:${i.password}`).join('\n');
+    const data = instances.map(i => {
+      const auth = i.authEnabled ? `:${i.username}:${i.password}` : '';
+      return `${i.vpsIp}:${i.port}${auth}`;
+    }).join('\n');
     const blob = new Blob([data], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'tor_proxies_auth.txt';
+    a.download = 'proxy_list_vietnam.txt';
     a.click();
-    toast({ title: "Export Success", description: "VPS List with credentials downloaded." });
+    toast({ title: "Xuất dữ liệu thành công", description: "Danh sách Proxy đã được tải về." });
   };
 
   return (
@@ -195,7 +207,7 @@ export default function DashboardClient() {
             instances={instances} 
             onAction={handleAction} 
             onRefresh={() => {
-              toast({ title: "Refreshing Table", description: "Syncing status..." });
+              toast({ title: "Đang đồng bộ", description: "Cập nhật dữ liệu từ máy chủ..." });
             }} 
           />
         </div>

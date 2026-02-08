@@ -29,7 +29,7 @@ export function QuickTools({ onCleanup, onExport, onRotateAll, onCheckAll }: Qui
       <CardHeader className="pb-4">
         <CardTitle className="text-md font-bold text-white flex items-center gap-2">
           <Wrench className="w-4 h-4 text-muted-foreground" />
-          Quick Tools
+          Công Cụ Nhanh
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -39,7 +39,7 @@ export function QuickTools({ onCleanup, onExport, onRotateAll, onCheckAll }: Qui
           className="w-full bg-accent/5 text-accent border-accent/20 hover:bg-accent hover:text-white transition-all text-xs font-bold py-5"
         >
           <ShieldCheck className="w-4 h-4 mr-2" />
-          PROBE ALL CONNECTIONS
+          KIỂM TRA TẤT CẢ KẾT NỐI
         </Button>
 
         <Button 
@@ -48,7 +48,7 @@ export function QuickTools({ onCleanup, onExport, onRotateAll, onCheckAll }: Qui
           className="w-full bg-primary/5 text-primary border-primary/20 hover:bg-primary hover:text-white transition-all text-xs font-bold py-5"
         >
           <Repeat className="w-4 h-4 mr-2" />
-          ROTATE ALL AUTH & IP
+          XOAY TOÀN BỘ IP/AUTH
         </Button>
 
         <Button 
@@ -57,27 +57,27 @@ export function QuickTools({ onCleanup, onExport, onRotateAll, onCheckAll }: Qui
           className="w-full bg-white/5 text-white border-white/10 hover:bg-white hover:text-black transition-all text-xs font-bold py-5"
         >
           <Download className="w-4 h-4 mr-2" />
-          EXPORT PROXY:AUTH
+          XUẤT DANH SÁCH PROXY
         </Button>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="outline" className="w-full bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive hover:text-white transition-all text-xs font-bold py-5">
               <ShieldAlert className="w-4 h-4 mr-2" />
-              FORCE CLEANUP
+              DỌN DẸP HỆ THỐNG
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent className="glass-card border-destructive/50 text-white">
             <AlertDialogHeader>
-              <AlertDialogTitle>Full System Wipe?</AlertDialogTitle>
+              <AlertDialogTitle>Xác nhận xóa toàn bộ?</AlertDialogTitle>
               <AlertDialogDescription className="text-muted-foreground">
-                This will kill all active Tor processes and delete all temporary instance data. This action cannot be undone.
+                Hành động này sẽ dừng tất cả tiến trình Tor đang chạy và xóa sạch dữ liệu tạm thời. Không thể hoàn tác.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="bg-background border-border">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="bg-background border-border">Hủy bỏ</AlertDialogCancel>
               <AlertDialogAction onClick={onCleanup} className="bg-destructive text-white hover:bg-destructive/90">
-                Wipe All
+                Xác nhận xóa
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

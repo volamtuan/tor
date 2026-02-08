@@ -21,7 +21,7 @@ export function StatHeader({ stats }: StatHeaderProps) {
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-accent animate-pulse status-glow-emerald" />
           <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-            System Status: <span className="text-accent font-bold">Optimal</span>
+            Trạng Thái Hệ Thống: <span className="text-accent font-bold">Tối Ưu</span>
           </p>
         </div>
       </div>
@@ -34,9 +34,9 @@ export function StatHeader({ stats }: StatHeaderProps) {
           className="status-glow-indigo"
         />
         <StatCard 
-          label="Tor Instances" 
-          value={`${stats.instances} Active`} 
-          subValue={`(${stats.torMem}MB Used)`}
+          label="Cổng Tor" 
+          value={`${stats.instances} Đang chạy`} 
+          subValue={`(${stats.torMem}MB Bộ nhớ)`}
           icon={<Server className="w-4 h-4 text-accent" />}
           className="border-l-4 border-accent"
         />

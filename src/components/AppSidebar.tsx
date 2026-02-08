@@ -40,25 +40,25 @@ export function AppSidebar() {
 
       <SidebarContent className="px-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Core System</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Hệ Thống Chính</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton isActive tooltip="Main Control">
+                <SidebarMenuButton isActive tooltip="Bảng điều khiển">
                   <LayoutDashboard className="w-4 h-4" />
-                  <span className="font-bold">DASHBOARD</span>
+                  <span className="font-bold">BẢNG ĐIỀU KHIỂN</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Proxy List">
+                <SidebarMenuButton tooltip="Danh sách Proxy">
                   <Globe className="w-4 h-4" />
-                  <span className="font-bold">PROXIES</span>
+                  <span className="font-bold">DANH SÁCH PROXY</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Global Settings">
+                <SidebarMenuButton tooltip="Cấu hình hệ thống">
                   <Settings className="w-4 h-4" />
-                  <span className="font-bold">SETTINGS</span>
+                  <span className="font-bold">CÀI ĐẶT</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -66,25 +66,25 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Advanced</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Nâng Cao</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Auth Manager">
+                <SidebarMenuButton tooltip="Quản lý khóa">
                   <Lock className="w-4 h-4" />
-                  <span className="font-bold">AUTH KEYS</span>
+                  <span className="font-bold">KHÓA XÁC THỰC</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Logs">
+                <SidebarMenuButton tooltip="Nhật ký">
                   <History className="w-4 h-4" />
-                  <span className="font-bold">ACTIVITY LOGS</span>
+                  <span className="font-bold">LỊCH SỬ HOẠT ĐỘNG</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Terminal">
+                <SidebarMenuButton tooltip="Cửa sổ lệnh">
                   <Terminal className="w-4 h-4" />
-                  <span className="font-bold">CLI ACCESS</span>
+                  <span className="font-bold">TRÌNH LỆNH CLI</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -96,10 +96,10 @@ export function AppSidebar() {
         <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
           <div className="flex items-center gap-2 mb-2">
             <Cpu className="w-3 h-3 text-primary" />
-            <span className="text-[10px] font-bold text-primary uppercase">Engine Status</span>
+            <span className="text-[10px] font-bold text-primary uppercase">Trạng Thái Engine</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            v2.4.0 <span className="text-accent ml-1 font-bold">Stable</span>
+            Phiên bản 2.4.0 <span className="text-accent ml-1 font-bold">Ổn định</span>
           </p>
         </div>
       </SidebarFooter>
