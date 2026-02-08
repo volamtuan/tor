@@ -1,7 +1,8 @@
+
 "use client"
 
 import React from 'react';
-import { RefreshCw, RotateCcw, Trash2, Globe, Zap, Network } from 'lucide-react';
+import { RefreshCw, RotateCcw, Trash2, Globe, Zap, Network, ShieldCheck, Repeat } from 'lucide-react';
 import { Instance } from './DashboardClient';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ProxyTableProps {
   instances: Instance[];
@@ -50,10 +52,10 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
           <Table>
             <TableHeader className="bg-background/40">
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-[100px] text-muted-foreground font-bold uppercase text-[10px] tracking-widest pl-8">Port</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Endpoint</TableHead>
+                <TableHead className="w-[180px] text-muted-foreground font-bold uppercase text-[10px] tracking-widest pl-8">VPS IP:PORT</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Identity (IPv4/v6)</TableHead>
                 <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Latency</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Throughput</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Status</TableHead>
                 <TableHead className="text-right pr-8 text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Control</TableHead>
               </TableRow>
             </TableHeader>
@@ -72,20 +74,27 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                   <TableRow 
                     key={p.port} 
                     className={`transition-colors border-l-4 group hover:bg-white/5 ${
-                      p.status === 'LIVE' ? 'border-accent' : 'border-destructive'
+                      p.status === 'LIVE' ? 'border-accent' : p.status === 'CHECKING' ? 'border-primary' : 'border-destructive'
                     }`}
                   >
                     <TableCell className="pl-8">
-                      <span className="font-mono font-bold text-primary text-md">:{p.port}</span>
+                      <div className="flex flex-col">
+                        <span className="font-mono font-bold text-primary text-sm">{p.vpsIp}</span>
+                        <span className="font-mono text-muted-foreground text-xs font-bold">:{p.port}</span>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col">
-                          <span className="text-white font-mono text-sm tracking-tighter">{p.ip}</span>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <Globe className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">{p.country}</span>
-                          </div>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-mono text-xs tracking-tighter bg-white/5 px-1.5 rounded">{p.exitIp}</span>
+                          <Badge variant="outline" className="text-[9px] h-4 py-0 font-bold border-accent/30 text-accent uppercase">Exit</Badge>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[150px]">{p.ipv6}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">{p.country}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -95,30 +104,52 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className="text-xs font-mono text-accent font-bold bg-accent/10 px-2 py-1 rounded border border-accent/20">
-                        {p.speed} KB/s
-                      </span>
+                      <Badge 
+                        variant={p.status === 'LIVE' ? 'default' : p.status === 'CHECKING' ? 'outline' : 'destructive'}
+                        className={`text-[9px] font-bold ${p.status === 'LIVE' ? 'bg-accent' : ''}`}
+                      >
+                        {p.status}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right pr-8">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => onAction('restart', p.port)}
-                          className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 w-8"
-                          title="Restart Instance"
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => onAction('delete', p.port)}
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8"
-                          title="Kill Instance"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => onAction('check', p.port)} className="h-8 w-8 text-primary hover:bg-primary/10">
+                                <ShieldCheck className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Check Proxy</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => onAction('rotate', p.port)} className="h-8 w-8 text-accent hover:bg-accent/10">
+                                <Repeat className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Rotate IPv6</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => onAction('restart', p.port)} className="h-8 w-8 text-muted-foreground hover:text-white hover:bg-white/10">
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Restart Tor</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => onAction('delete', p.port)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Kill Instance</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>
