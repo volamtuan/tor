@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StatHeader } from '@/components/StatHeader';
 import { InstanceManager, DeployConfig } from '@/components/InstanceManager';
 import { ProxyTable } from '@/components/ProxyTable';
@@ -36,7 +36,7 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// Địa chỉ mặc định của Backend Flask
+// Địa chỉ Backend Flask
 const API_BASE = 'http://127.0.0.1:5757';
 
 export default function DashboardClient() {
@@ -54,30 +54,29 @@ export default function DashboardClient() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
 
+  // Tránh Hydration mismatch bằng cách khởi tạo dữ liệu ngẫu nhiên sau khi mount
   useEffect(() => {
-    // Lấy IP của trình duyệt làm mặc định cho VPS IP
     if (typeof window !== 'undefined') {
       setServerIp(window.location.hostname);
     }
     
-    refreshStats();
-    loadInstances();
-    
-    const interval = setInterval(() => {
-      refreshStats();
-      loadInstances();
-    }, 5000);
-    return () => clearInterval(interval);
+    // Khởi tạo stats ban đầu
+    setStats(prev => ({
+      ...prev,
+      cpu: Math.floor(Math.random() * 15) + 5,
+      ram: Math.floor(Math.random() * 30) + 40,
+    }));
   }, []);
 
-  const refreshStats = async () => {
+  const refreshStats = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/status`).catch(() => null);
       if (!res || !res.ok) {
         setStats(prev => ({ ...prev, torStatus: 'offline' }));
         return;
       }
-      const data = await res.json();
+      
+      const data = await res.json().catch(() => ({ status: 'unknown' }));
       setStats(prev => ({
         ...prev,
         torStatus: data.status || 'unknown',
@@ -89,14 +88,17 @@ export default function DashboardClient() {
     } catch (e) {
       setStats(prev => ({ ...prev, torStatus: 'offline' }));
     }
-  };
+  }, [instances.length]);
 
-  const loadInstances = async () => {
+  const loadInstances = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/check_all_proxies`).catch(() => null);
       if (!res || !res.ok) return;
       
-      const data = await res.json();
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) return;
+
+      const data = await res.json().catch(() => []);
       if (Array.isArray(data)) {
         const mapped: Instance[] = data.map(p => ({
           port: p.port,
@@ -116,9 +118,20 @@ export default function DashboardClient() {
         setInstances(mapped);
       }
     } catch (e) {
-      console.error("Lỗi tải danh sách instance:", e);
+      // Bỏ qua lỗi fetch load failed khi Backend chưa sẵn sàng
     }
-  };
+  }, [serverIp]);
+
+  useEffect(() => {
+    refreshStats();
+    loadInstances();
+    
+    const interval = setInterval(() => {
+      refreshStats();
+      loadInstances();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [refreshStats, loadInstances]);
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
@@ -137,13 +150,16 @@ export default function DashboardClient() {
           ipMode: config.ipMode
         })
       });
+      
+      if (!res.ok) throw new Error("Network response was not ok");
       const data = await res.json();
+      
       if (data.ok) {
         toast({ title: "Thành công", description: `Đã tạo các cổng: ${data.created.join(', ')}` });
         loadInstances();
       }
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask (Load Failed)", variant: "destructive" });
     } finally {
       setIsDeploying(false);
     }
@@ -159,7 +175,7 @@ export default function DashboardClient() {
       const res = await fetch(`${API_BASE}${endpoint}`).catch(() => null);
       if (!res) throw new Error("Kết nối thất bại");
       
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       
       if (act === 'check') {
         toast({ 
@@ -178,7 +194,8 @@ export default function DashboardClient() {
 
   const handleGlobalAction = async (action: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/${action}`, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/api/${action}`, { method: 'POST' }).catch(() => null);
+      if (!res || !res.ok) throw new Error("API request failed");
       const data = await res.json();
       toast({ title: "Thông báo hệ thống", description: data.message });
       refreshStats();
@@ -192,7 +209,7 @@ export default function DashboardClient() {
       toast({ title: "Thông báo", description: "Không có proxy nào để xuất!", variant: "destructive" });
       return;
     }
-    const text = instances.map(p => `${p.vpsIp}:${p.port}:${p.username}:${p.password}`).join('\n');
+    const text = instances.map(p => `${p.vpsIp}:${p.port}:${p.username || ''}:${p.password || ''}`).join('\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
