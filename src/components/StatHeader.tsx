@@ -1,6 +1,11 @@
+
+"use client"
+
 import React from 'react';
-import { Cpu, Database, Activity, Server } from 'lucide-react';
+import { Cpu, Server, Activity, Power, RotateCw, Play } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface StatHeaderProps {
   stats: {
@@ -8,21 +13,36 @@ interface StatHeaderProps {
     ram: number;
     torMem: number;
     instances: number;
+    torStatus: string;
   };
+  onAction: (action: string) => void;
 }
 
-export function StatHeader({ stats }: StatHeaderProps) {
+export function StatHeader({ stats, onAction }: StatHeaderProps) {
+  const isActive = stats.torStatus === 'active';
+
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-      <div className="space-y-1">
+      <div className="space-y-3">
         <h1 className="text-4xl font-extrabold tracking-tighter text-white italic">
           TOR<span className="text-primary">MASTER</span> PRO
         </h1>
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-accent animate-pulse status-glow-emerald" />
+        <div className="flex items-center gap-3">
+          <div className={`h-2 w-2 rounded-full animate-pulse ${isActive ? 'bg-accent' : 'bg-destructive'}`} />
           <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-            Trạng Thái Hệ Thống: <span className="text-accent font-bold">Tối Ưu</span>
+            Hệ Thống: <Badge variant={isActive ? "default" : "destructive"} className="text-[10px] py-0">{stats.torStatus.toUpperCase()}</Badge>
           </p>
+          <div className="flex gap-1 ml-4">
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-emerald-400 hover:bg-emerald-400/10" onClick={() => onAction('start')}>
+              <Play className="w-3 h-3" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-amber-400 hover:bg-amber-400/10" onClick={() => onAction('restart')}>
+              <RotateCw className="w-3 h-3" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => onAction('stop')}>
+              <Power className="w-3 h-3" />
+            </Button>
+          </div>
         </div>
       </div>
 

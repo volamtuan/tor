@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -5,8 +6,11 @@ import { StatHeader } from '@/components/StatHeader';
 import { InstanceManager, DeployConfig } from '@/components/InstanceManager';
 import { ProxyTable } from '@/components/ProxyTable';
 import { QuickTools } from '@/components/QuickTools';
+import { TorrcEditor } from '@/components/TorrcEditor';
+import { LogViewer } from '@/components/LogViewer';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export type Instance = {
   port: number;
@@ -28,15 +32,20 @@ export type SystemStats = {
   ram: number;
   torMem: number;
   instances: number;
+  torStatus: string;
 };
+
+const API_BASE = ''; // Giả định NextJS proxy qua Flask hoặc chạy cùng domain
 
 export default function DashboardClient() {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState<SystemStats>({
     cpu: 0,
     ram: 0,
     torMem: 0,
     instances: 0,
+    torStatus: 'unknown'
   });
   
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -44,192 +53,153 @@ export default function DashboardClient() {
 
   useEffect(() => {
     refreshStats();
-    const statsInterval = setInterval(refreshStats, 3000);
-    return () => clearInterval(statsInterval);
-  }, [instances.length]);
+    loadInstances();
+    const interval = setInterval(() => {
+      refreshStats();
+      loadInstances();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const refreshStats = () => {
-    setStats({
-      cpu: Math.floor(Math.random() * 25) + 5,
-      ram: Math.floor(Math.random() * 40) + 30,
-      torMem: Math.floor(Math.random() * 500) + 120,
-      instances: instances.length,
-    });
-  };
-
-  const generateRandomAuth = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    const user = "tor_" + Array.from({ length: 4 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
-    const pass = Array.from({ length: 8 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
-    return { user, pass };
-  };
-
-  const generateVnIpv6 = () => {
-    // Prefix Viettel: 2403:6200
-    // Prefix VNPT: 2402:800
-    const prefixes = ['2403:6200', '2402:800', '2405:4800'];
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const segments = Array.from({ length: 4 }).map(() => Math.floor(Math.random() * 65535).toString(16));
-    return `${prefix}:${segments[0]}:${segments[1]}:${segments[2]}:${segments[3]}:1`;
-  };
-
-  const handleDeploy = (config: DeployConfig) => {
-    setIsDeploying(true);
-    toast({
-      title: "Đang triển khai",
-      description: `Khởi tạo ${config.count} tunnel Tor mới tại ${config.country === 'Random' ? 'Quốc gia ngẫu nhiên' : config.country}...`,
-    });
-
-    setTimeout(() => {
-      const vpsIpBase = "103.153.64.";
-      const newInstances: Instance[] = Array.from({ length: config.count }).map((_, i) => {
-        const port = 8000 + instances.length + i;
-        let username = config.username;
-        let password = config.password;
-        
-        if (config.authEnabled && (!username || !password)) {
-          const randomAuth = generateRandomAuth();
-          username = username || randomAuth.user;
-          password = password || randomAuth.pass;
-        }
-
-        const country = config.country === 'Random' 
-          ? ['Vietnam', 'United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 7)] 
-          : config.country;
-
-        return {
-          port,
-          status: 'LIVE',
-          externalStatus: 'WAITING',
-          vpsIp: vpsIpBase + (Math.floor(Math.random() * 254) + 1),
-          exitIp: country === 'Vietnam' ? `171.224.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-          ping: Math.floor(Math.random() * 300) + 50,
-          country,
-          speed: parseFloat((Math.random() * 200 + 20).toFixed(2)),
-          ipv6: country === 'Vietnam' ? generateVnIpv6() : `2a03:2880:f12f:83:face:b00c:${Math.random().toString(16).slice(2, 6)}:1`,
-          username,
-          password,
-          authEnabled: config.authEnabled
-        };
-      });
-      setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
-      setIsDeploying(false);
-      toast({
-        title: "Triển khai hoàn tất",
-        description: `Đã kích hoạt thành công ${config.count} instance.`,
-      });
-    }, 2000);
-  };
-
-  const checkConnectivity = (port: number) => {
-    setInstances(prev => prev.map(i => i.port === port ? { ...i, externalStatus: 'TESTING' } : i));
-    
-    setTimeout(() => {
-      const isSuccess = Math.random() > 0.15;
-      setInstances(prev => prev.map(i => i.port === port ? { 
-        ...i, 
-        externalStatus: isSuccess ? 'READY' : 'FAILED',
-        status: isSuccess ? 'LIVE' : 'DIE'
-      } : i));
-      
-      if (isSuccess) {
-        toast({ title: "Kết nối OK", description: `Cổng :${port} đã thông mạng quốc tế.` });
-      } else {
-        toast({ title: "Lỗi kết nối", description: `Cổng :${port} không thể truy cập từ bên ngoài.`, variant: "destructive" });
-      }
-    }, 2000);
-  };
-
-  const handleAction = (act: string, port: number) => {
-    if (act === 'delete') {
-      setInstances(prev => prev.filter(i => i.port !== port));
-      toast({ title: "Đã xóa", description: `Cổng :${port} đã bị gỡ bỏ.` });
-    } else if (act === 'restart') {
-      setInstances(prev => prev.map(i => i.port === port ? { ...i, status: 'LIVE', externalStatus: 'WAITING', ping: Math.floor(Math.random() * 100) + 50 } : i));
-      toast({ title: "Đã khởi động lại", description: `Đang làm mới cổng :${port}...` });
-    } else if (act === 'check') {
-      checkConnectivity(port);
-    } else if (act === 'rotate') {
-      const randomAuth = generateRandomAuth();
-      setInstances(prev => prev.map(i => {
-        if (i.port === port) {
-          return { 
-            ...i, 
-            exitIp: i.country === 'Vietnam' ? `171.224.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-            ipv6: i.country === 'Vietnam' ? generateVnIpv6() : `2a03:2880:f12f:83:face:b00c:${Math.random().toString(16).slice(2, 6)}:1`,
-            username: i.authEnabled ? randomAuth.user : undefined,
-            password: i.authEnabled ? randomAuth.pass : undefined
-          };
-        }
-        return i;
+  const refreshStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/status`);
+      const data = await res.json();
+      setStats(prev => ({
+        ...prev,
+        torStatus: data.status,
+        cpu: Math.floor(Math.random() * 15) + 5, // Mock CPU/RAM vì Flask chưa trả về
+        ram: Math.floor(Math.random() * 30) + 40,
+        torMem: instances.length * 24,
+        instances: instances.length
       }));
-      toast({ title: "Đã xoay IP/IPv6", description: `Cổng :${port} đã nhận định danh mới.` });
+    } catch (e) {
+      console.error("Lỗi kết nối API:", e);
     }
   };
 
-  const handleGlobalRotate = () => {
-    setInstances(prev => prev.map(i => {
-      const randomAuth = generateRandomAuth();
-      return { 
-        ...i, 
-        exitIp: i.country === 'Vietnam' ? `171.224.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        ipv6: i.country === 'Vietnam' ? generateVnIpv6() : `2a03:2880:f12f:83:face:b00c:${Math.random().toString(16).slice(2, 6)}:1`,
-        username: i.authEnabled ? randomAuth.user : undefined,
-        password: i.authEnabled ? randomAuth.pass : undefined
-      };
-    }));
-    toast({ title: "Xoay toàn bộ hệ thống", description: "Tất cả các proxy đã được đổi IP và thông tin xác thực." });
+  const loadInstances = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/check_all_proxies`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const mapped: Instance[] = data.map(p => ({
+          port: p.port,
+          status: p.status,
+          externalStatus: p.status === 'LIVE' ? 'READY' : 'FAILED',
+          vpsIp: window.location.hostname,
+          exitIp: p.ip || '---',
+          ping: p.ping || 0,
+          country: p.country || 'Unknown',
+          speed: p.speed || 0,
+          ipv6: '---', // Backend Flask chưa hỗ trợ IPv6 cụ thể cho instance
+          authEnabled: false
+        }));
+        setInstances(mapped);
+      }
+    } catch (e) {
+      console.error("Lỗi tải danh sách instance:", e);
+    }
   };
 
-  const handleGlobalCheck = () => {
-    toast({ title: "Bắt đầu kiểm tra", description: "Đang quét trạng thái tất cả tunnel..." });
-    instances.forEach(i => checkConnectivity(i.port));
+  const handleDeploy = async (config: DeployConfig) => {
+    setIsDeploying(true);
+    toast({ title: "Đang triển khai", description: `Đang tạo ${config.count} tunnel mới...` });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/create_tunnels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count: config.count })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast({ title: "Thành công", description: `Đã tạo các cổng: ${data.created.join(', ')}` });
+        loadInstances();
+      }
+    } catch (e) {
+      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend", variant: "destructive" });
+    } finally {
+      setIsDeploying(false);
+    }
   };
 
-  const handleCleanup = () => {
-    setInstances([]);
-    toast({ title: "Dọn dẹp hệ thống", description: "Tất cả các tiến trình Tor đã bị dừng.", variant: "destructive" });
+  const handleAction = async (act: string, port: number) => {
+    try {
+      if (act === 'restart' || act === 'rotate') {
+        await fetch(`${API_BASE}/api/newnym/${port}`);
+        toast({ title: "Đang làm mới", description: `Đã gửi lệnh Newnym cho cổng :${port}` });
+      } else if (act === 'delete' || act === 'stop') {
+        await fetch(`${API_BASE}/api/stop_port/${port}`);
+        toast({ title: "Đã dừng", description: `Cổng :${port} đã được tắt.` });
+      } else if (act === 'check') {
+        const res = await fetch(`${API_BASE}/api/check_proxy/${port}`);
+        const data = await res.json();
+        toast({ 
+          title: data.status === 'LIVE' ? "Kết nối OK" : "Lỗi kết nối", 
+          description: `IP: ${data.ip || 'N/A'} - Ping: ${data.ping || 0}ms`,
+          variant: data.status === 'LIVE' ? "default" : "destructive"
+        });
+      }
+      loadInstances();
+    } catch (e) {
+      toast({ title: "Lỗi thao tác", description: "Lỗi thực thi lệnh API", variant: "destructive" });
+    }
   };
 
-  const handleExport = () => {
-    const data = instances.map(i => {
-      const auth = i.authEnabled ? `:${i.username}:${i.password}` : '';
-      return `${i.vpsIp}:${i.port}${auth}`;
-    }).join('\n');
-    const blob = new Blob([data], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'proxy_list_tor.txt';
-    a.click();
-    toast({ title: "Xuất dữ liệu thành công", description: "Danh sách Proxy đã được tải về." });
+  const handleGlobalAction = async (action: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/${action}`, { method: 'POST' });
+      const data = await res.json();
+      toast({ title: "Thông báo hệ thống", description: data.message });
+      refreshStats();
+    } catch (e) {
+      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend", variant: "destructive" });
+    }
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-10">
-      <StatHeader stats={stats} />
+      <StatHeader stats={stats} onAction={handleGlobalAction} />
       
-      <div className="grid grid-cols-12 gap-8">
-        <div className="col-span-12 lg:col-span-3 space-y-6">
-          <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
-          <QuickTools 
-            onCleanup={handleCleanup} 
-            onExport={handleExport} 
-            onRotateAll={handleGlobalRotate} 
-            onCheckAll={handleGlobalCheck}
-          />
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-card/50 border border-border/50 mb-6">
+          <TabsTrigger value="dashboard" className="font-bold">BẢNG ĐIỀU KHIỂN</TabsTrigger>
+          <TabsTrigger value="config" className="font-bold">CẤU HÌNH TORRC</TabsTrigger>
+          <TabsTrigger value="logs" className="font-bold">NHẬT KÝ HỆ THỐNG</TabsTrigger>
+        </TabsList>
 
-        <div className="col-span-12 lg:col-span-9">
-          <ProxyTable 
-            instances={instances} 
-            onAction={handleAction} 
-            onRefresh={() => {
-              toast({ title: "Đang đồng bộ", description: "Cập nhật dữ liệu từ máy chủ..." });
-            }} 
-          />
-        </div>
-      </div>
+        <TabsContent value="dashboard" className="space-y-10">
+          <div className="grid grid-cols-12 gap-8">
+            <div className="col-span-12 lg:col-span-3 space-y-6">
+              <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
+              <QuickTools 
+                onCleanup={() => handleGlobalAction('stop')} 
+                onExport={() => {}} 
+                onRotateAll={() => loadInstances()} 
+                onCheckAll={() => loadInstances()}
+              />
+            </div>
+
+            <div className="col-span-12 lg:col-span-9">
+              <ProxyTable 
+                instances={instances} 
+                onAction={handleAction} 
+                onRefresh={loadInstances} 
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="config">
+          <TorrcEditor apiBase={API_BASE} />
+        </TabsContent>
+
+        <TabsContent value="logs">
+          <LogViewer apiBase={API_BASE} />
+        </TabsContent>
+      </Tabs>
+      
       <Toaster />
     </div>
   );
