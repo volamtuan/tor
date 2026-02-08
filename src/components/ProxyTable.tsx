@@ -1,8 +1,20 @@
-
 "use client"
 
 import React from 'react';
-import { RefreshCw, RotateCcw, Trash2, Globe, Zap, Network, ShieldCheck, Repeat } from 'lucide-react';
+import { 
+  RefreshCw, 
+  RotateCcw, 
+  Trash2, 
+  Globe, 
+  Zap, 
+  Network, 
+  ShieldCheck, 
+  Repeat,
+  Lock,
+  Wifi,
+  WifiOff,
+  Loader2
+} from 'lucide-react';
 import { Instance } from './DashboardClient';
 import { Button } from '@/components/ui/button';
 import { 
@@ -31,7 +43,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
           <div className="bg-primary/20 p-2 rounded-lg">
             <Network className="w-5 h-5 text-primary" />
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">Active Proxy Tunnels</span>
+          <span className="text-white font-bold text-lg tracking-tight">Proxy Tunnel Fleet</span>
           <Badge variant="secondary" className="bg-background/50 font-mono text-xs text-muted-foreground">
             {instances.length} Total
           </Badge>
@@ -43,7 +55,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
           className="text-primary hover:text-primary/80 hover:bg-primary/10 text-xs font-bold"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
-          REFRESH
+          REFRESH FLEET
         </Button>
       </div>
       
@@ -52,11 +64,11 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
           <Table>
             <TableHeader className="bg-background/40">
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="w-[180px] text-muted-foreground font-bold uppercase text-[10px] tracking-widest pl-8">VPS IP:PORT</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Identity (IPv4/v6)</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Latency</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Status</TableHead>
-                <TableHead className="text-right pr-8 text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Control</TableHead>
+                <TableHead className="w-[180px] text-muted-foreground font-bold uppercase text-[10px] tracking-widest pl-8">VPS Endpoint</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Auth (User:Pass)</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">External Identity</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Connectivity</TableHead>
+                <TableHead className="text-right pr-8 text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Ops</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border/30">
@@ -65,7 +77,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                   <TableCell colSpan={5} className="h-48 text-center text-muted-foreground">
                     <div className="flex flex-col items-center gap-2 opacity-50">
                       <Zap className="w-12 h-12" />
-                      <p className="font-mono uppercase tracking-widest text-sm">No active tunnels found</p>
+                      <p className="font-mono uppercase tracking-widest text-sm">Deployment required</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -74,7 +86,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                   <TableRow 
                     key={p.port} 
                     className={`transition-colors border-l-4 group hover:bg-white/5 ${
-                      p.status === 'LIVE' ? 'border-accent' : p.status === 'CHECKING' ? 'border-primary' : 'border-destructive'
+                      p.externalStatus === 'READY' ? 'border-accent' : p.externalStatus === 'TESTING' ? 'border-primary' : 'border-destructive'
                     }`}
                   >
                     <TableCell className="pl-8">
@@ -84,32 +96,50 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-mono text-xs tracking-tighter bg-white/5 px-1.5 rounded">{p.exitIp}</span>
-                          <Badge variant="outline" className="text-[9px] h-4 py-0 font-bold border-accent/30 text-accent uppercase">Exit</Badge>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                          <span className="font-mono text-xs text-white">{p.username}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[150px]">{p.ipv6}</span>
+                          <div className="w-3" />
+                          <span className="font-mono text-[10px] text-muted-foreground">{p.password}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-mono text-[11px] tracking-tighter bg-white/5 px-1.5 rounded">{p.exitIp}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Globe className="w-3 h-3 text-muted-foreground" />
                           <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">{p.country}</span>
                         </div>
+                        <span className="text-[9px] text-muted-foreground font-mono truncate max-w-[120px] opacity-60 italic">{p.ipv6}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className={`text-xs font-mono font-bold ${p.ping < 150 ? 'text-accent' : 'text-orange-400'}`}>
-                        {p.ping}ms
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge 
-                        variant={p.status === 'LIVE' ? 'default' : p.status === 'CHECKING' ? 'outline' : 'destructive'}
-                        className={`text-[9px] font-bold ${p.status === 'LIVE' ? 'bg-accent' : ''}`}
-                      >
-                        {p.status}
-                      </Badge>
+                      <div className="flex flex-col items-center gap-1">
+                        {p.externalStatus === 'TESTING' ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        ) : p.externalStatus === 'READY' ? (
+                          <div className="flex flex-col items-center">
+                            <Wifi className="w-4 h-4 text-accent" />
+                            <span className="text-[8px] font-bold text-accent uppercase">External OK</span>
+                          </div>
+                        ) : p.externalStatus === 'FAILED' ? (
+                          <div className="flex flex-col items-center">
+                            <WifiOff className="w-4 h-4 text-destructive" />
+                            <span className="text-[8px] font-bold text-destructive uppercase">Blocked</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center opacity-30">
+                            <Wifi className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase">Pending</span>
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right pr-8">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -120,7 +150,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                                 <ShieldCheck className="w-4 h-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Check Proxy</TooltipContent>
+                            <TooltipContent>Probe Connectivity</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -129,7 +159,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                                 <Repeat className="w-4 h-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Rotate IPv6</TooltipContent>
+                            <TooltipContent>Rotate IP & Auth</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>

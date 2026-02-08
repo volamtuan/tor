@@ -1,8 +1,7 @@
-
 "use client"
 
 import React from 'react';
-import { Trash2, Download, ShieldAlert, Wrench, Repeat } from 'lucide-react';
+import { Trash2, Download, ShieldAlert, Wrench, Repeat, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
@@ -21,9 +20,10 @@ interface QuickToolsProps {
   onCleanup: () => void;
   onExport: () => void;
   onRotateAll: () => void;
+  onCheckAll: () => void;
 }
 
-export function QuickTools({ onCleanup, onExport, onRotateAll }: QuickToolsProps) {
+export function QuickTools({ onCleanup, onExport, onRotateAll, onCheckAll }: QuickToolsProps) {
   return (
     <Card className="glass-card border-muted">
       <CardHeader className="pb-4">
@@ -35,20 +35,29 @@ export function QuickTools({ onCleanup, onExport, onRotateAll }: QuickToolsProps
       <CardContent className="space-y-3">
         <Button 
           variant="outline" 
+          onClick={onCheckAll}
+          className="w-full bg-accent/5 text-accent border-accent/20 hover:bg-accent hover:text-white transition-all text-xs font-bold py-5"
+        >
+          <ShieldCheck className="w-4 h-4 mr-2" />
+          PROBE ALL CONNECTIONS
+        </Button>
+
+        <Button 
+          variant="outline" 
           onClick={onRotateAll}
           className="w-full bg-primary/5 text-primary border-primary/20 hover:bg-primary hover:text-white transition-all text-xs font-bold py-5"
         >
           <Repeat className="w-4 h-4 mr-2" />
-          ROTATE ALL IPv6
+          ROTATE ALL AUTH & IP
         </Button>
 
         <Button 
           variant="outline" 
           onClick={onExport}
-          className="w-full bg-accent/5 text-accent border-accent/20 hover:bg-accent hover:text-white transition-all text-xs font-bold py-5"
+          className="w-full bg-white/5 text-white border-white/10 hover:bg-white hover:text-black transition-all text-xs font-bold py-5"
         >
           <Download className="w-4 h-4 mr-2" />
-          EXPORT VPS:PORT
+          EXPORT PROXY:AUTH
         </Button>
 
         <AlertDialog>

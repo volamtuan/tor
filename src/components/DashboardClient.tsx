@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -12,12 +11,15 @@ import { useToast } from '@/hooks/use-toast';
 export type Instance = {
   port: number;
   status: 'LIVE' | 'DIE' | 'CHECKING';
+  externalStatus: 'READY' | 'FAILED' | 'TESTING' | 'WAITING';
   vpsIp: string;
   exitIp: string;
   ping: number;
   country: string;
   speed: number;
   ipv6: string;
+  username: string;
+  password: string;
 };
 
 export type SystemStats = {
@@ -54,34 +56,65 @@ export default function DashboardClient() {
     });
   };
 
+  const generateAuth = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const user = "tor_" + Array.from({ length: 4 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const pass = Array.from({ length: 8 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
+    return { user, pass };
+  };
+
   const handleDeploy = (count: number) => {
     setIsDeploying(true);
     toast({
       title: "Deploying Instances",
-      description: `Starting ${count} new Tor proxy tunnel(s)...`,
+      description: `Starting ${count} new Tor proxy tunnel(s) with custom auth...`,
     });
 
     setTimeout(() => {
       const vpsIpBase = "103.153.64.";
       const newInstances: Instance[] = Array.from({ length: count }).map((_, i) => {
         const port = 8000 + instances.length + i;
+        const { user, pass } = generateAuth();
         return {
           port,
           status: 'LIVE',
+          externalStatus: 'WAITING',
           vpsIp: vpsIpBase + (Math.floor(Math.random() * 254) + 1),
           exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
           ping: Math.floor(Math.random() * 300) + 50,
           country: ['United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 6)],
           speed: parseFloat((Math.random() * 200 + 20).toFixed(2)),
-          ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`
+          ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
+          username: user,
+          password: pass
         };
       });
       setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
       setIsDeploying(false);
       toast({
         title: "Deployment Complete",
-        description: `Successfully initialized ${count} instance(s).`,
+        description: `Successfully initialized ${count} instance(s) with secure credentials.`,
       });
+    }, 2000);
+  };
+
+  const checkConnectivity = (port: number) => {
+    setInstances(prev => prev.map(i => i.port === port ? { ...i, externalStatus: 'TESTING' } : i));
+    
+    // Simulate external probe to google.com via proxy
+    setTimeout(() => {
+      const isSuccess = Math.random() > 0.15;
+      setInstances(prev => prev.map(i => i.port === port ? { 
+        ...i, 
+        externalStatus: isSuccess ? 'READY' : 'FAILED',
+        status: isSuccess ? 'LIVE' : 'DIE'
+      } : i));
+      
+      if (isSuccess) {
+        toast({ title: "External Access OK", description: `Port :${port} is reachable from outside.` });
+      } else {
+        toast({ title: "Probe Failed", description: `Port :${port} failed external connectivity check.`, variant: "destructive" });
+      }
     }, 2000);
   };
 
@@ -90,31 +123,40 @@ export default function DashboardClient() {
       setInstances(prev => prev.filter(i => i.port !== port));
       toast({ title: "Instance Removed", description: `Port :${port} deleted.` });
     } else if (act === 'restart') {
-      setInstances(prev => prev.map(i => i.port === port ? { ...i, status: 'LIVE', ping: Math.floor(Math.random() * 100) + 50 } : i));
+      setInstances(prev => prev.map(i => i.port === port ? { ...i, status: 'LIVE', externalStatus: 'WAITING', ping: Math.floor(Math.random() * 100) + 50 } : i));
       toast({ title: "Instance Restarted", description: `Rebooting port :${port}...` });
     } else if (act === 'check') {
-      setInstances(prev => prev.map(i => i.port === port ? { ...i, status: 'CHECKING' } : i));
-      setTimeout(() => {
-        setInstances(prev => prev.map(i => i.port === port ? { ...i, status: Math.random() > 0.1 ? 'LIVE' : 'DIE', ping: Math.floor(Math.random() * 200) + 40 } : i));
-        toast({ title: "Check Complete", description: `Instance :${port} is verified.` });
-      }, 1500);
+      checkConnectivity(port);
     } else if (act === 'rotate') {
+      const { user, pass } = generateAuth();
       setInstances(prev => prev.map(i => i.port === port ? { 
         ...i, 
         exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`
+        ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
+        username: user,
+        password: pass
       } : i));
-      toast({ title: "IPv6 Rotated", description: `New identity assigned to :${port}` });
+      toast({ title: "Credentials Rotated", description: `New IP and Auth assigned to :${port}` });
     }
   };
 
   const handleGlobalRotate = () => {
-    setInstances(prev => prev.map(i => ({ 
-      ...i, 
-      exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`
-    })));
-    toast({ title: "System-wide Rotation", description: "All instances have rotated IPv6 & Exit IPs." });
+    setInstances(prev => prev.map(i => {
+      const { user, pass } = generateAuth();
+      return { 
+        ...i, 
+        exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
+        username: user,
+        password: pass
+      };
+    }));
+    toast({ title: "Full System Rotation", description: "All instances rotated IPs & Auth keys." });
+  };
+
+  const handleGlobalCheck = () => {
+    toast({ title: "Global Probe Started", description: "Testing all active tunnels..." });
+    instances.forEach(i => checkConnectivity(i.port));
   };
 
   const handleCleanup = () => {
@@ -123,14 +165,14 @@ export default function DashboardClient() {
   };
 
   const handleExport = () => {
-    const data = instances.map(i => `${i.vpsIp}:${i.port}`).join('\n');
+    const data = instances.map(i => `${i.vpsIp}:${i.port}:${i.username}:${i.password}`).join('\n');
     const blob = new Blob([data], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'vps_proxies.txt';
+    a.download = 'tor_proxies_auth.txt';
     a.click();
-    toast({ title: "Export Success", description: "VPS IP:Port list downloaded." });
+    toast({ title: "Export Success", description: "VPS List with credentials downloaded." });
   };
 
   return (
@@ -140,7 +182,12 @@ export default function DashboardClient() {
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-3 space-y-6">
           <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
-          <QuickTools onCleanup={handleCleanup} onExport={handleExport} onRotateAll={handleGlobalRotate} />
+          <QuickTools 
+            onCleanup={handleCleanup} 
+            onExport={handleExport} 
+            onRotateAll={handleGlobalRotate} 
+            onCheckAll={handleGlobalCheck}
+          />
         </div>
 
         <div className="col-span-12 lg:col-span-9">
