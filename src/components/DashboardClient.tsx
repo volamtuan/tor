@@ -1,0 +1,160 @@
+"use client"
+
+import React, { useState, useEffect } from 'react';
+import { StatHeader } from '@/components/StatHeader';
+import { InstanceManager } from '@/components/InstanceManager';
+import { ProxyTable } from '@/components/ProxyTable';
+import { QuickTools } from '@/components/QuickTools';
+import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/hooks/use-toast';
+
+export type Instance = {
+  port: number;
+  status: 'LIVE' | 'DIE';
+  ip: string;
+  ping: number;
+  country: string;
+  speed: number;
+};
+
+export type SystemStats = {
+  cpu: number;
+  ram: number;
+  torMem: number;
+  instances: number;
+};
+
+export default function DashboardClient() {
+  const { toast } = useToast();
+  const [stats, setStats] = useState<SystemStats>({
+    cpu: 0,
+    ram: 0,
+    torMem: 0,
+    instances: 0,
+  });
+  
+  const [instances, setInstances] = useState<Instance[]>([]);
+  const [isDeploying, setIsDeploying] = useState(false);
+
+  useEffect(() => {
+    // Initial data load
+    refreshStats();
+    refreshInstances();
+
+    // Intervals
+    const statsInterval = setInterval(refreshStats, 3000);
+    const instancesInterval = setInterval(refreshInstances, 15000);
+
+    return () => {
+      clearInterval(statsInterval);
+      clearInterval(instancesInterval);
+    };
+  }, []);
+
+  const refreshStats = () => {
+    // Mocking the backend API /api/stats
+    setStats({
+      cpu: Math.floor(Math.random() * 25) + 5,
+      ram: Math.floor(Math.random() * 40) + 30,
+      torMem: Math.floor(Math.random() * 500) + 120,
+      instances: instances.length,
+    });
+  };
+
+  const refreshInstances = () => {
+    // In a real app, this would be a fetch to /api/list
+    // We maintain state here to simulate the persistent nature
+  };
+
+  const handleDeploy = (count: number) => {
+    setIsDeploying(true);
+    toast({
+      title: "Deploying Instances",
+      description: `Starting ${count} new Tor proxy tunnel(s)...`,
+    });
+
+    setTimeout(() => {
+      const newInstances: Instance[] = Array.from({ length: count }).map((_, i) => {
+        const port = 8000 + instances.length + i;
+        return {
+          port,
+          status: Math.random() > 0.1 ? 'LIVE' : 'DIE',
+          ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+          ping: Math.floor(Math.random() * 300) + 50,
+          country: ['United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 6)],
+          speed: parseFloat((Math.random() * 200 + 20).toFixed(2)),
+        };
+      });
+      setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
+      setIsDeploying(false);
+      toast({
+        title: "Deployment Complete",
+        description: `Successfully initialized ${count} instance(s).`,
+      });
+    }, 2000);
+  };
+
+  const handleAction = (act: string, port: number) => {
+    if (act === 'delete') {
+      setInstances(prev => prev.filter(i => i.port !== port));
+      toast({
+        title: "Instance Removed",
+        description: `Instance on port :${port} has been deleted.`,
+      });
+    } else if (act === 'restart') {
+      setInstances(prev => prev.map(i => i.port === port ? { ...i, status: 'LIVE', ping: Math.floor(Math.random() * 100) + 50 } : i));
+      toast({
+        title: "Instance Restarted",
+        description: `Instance on port :${port} is rebooting...`,
+      });
+    }
+  };
+
+  const handleCleanup = () => {
+    setInstances([]);
+    toast({
+      title: "Full System Cleanup",
+      description: "All instances stopped and cache cleared.",
+      variant: "destructive"
+    });
+  };
+
+  const handleExport = () => {
+    const data = instances.map(i => `127.0.0.1:${i.port}`).join('\n');
+    const blob = new Blob([data], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tor_proxies.txt';
+    a.click();
+    toast({
+      title: "Export Success",
+      description: "Proxy list downloaded successfully.",
+    });
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-10">
+      <StatHeader stats={stats} />
+      
+      <div className="grid grid-cols-12 gap-8">
+        <div className="col-span-12 lg:col-span-3 space-y-6">
+          <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
+          <QuickTools onCleanup={handleCleanup} onExport={handleExport} />
+        </div>
+
+        <div className="col-span-12 lg:col-span-9">
+          <ProxyTable 
+            instances={instances} 
+            onAction={handleAction} 
+            onRefresh={() => {
+              toast({ title: "Refreshing Table", description: "Fetching latest instance states..." });
+              refreshInstances();
+            }} 
+          />
+        </div>
+      </div>
+      <Toaster />
+    </div>
+  );
+}
