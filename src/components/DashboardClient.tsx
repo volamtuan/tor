@@ -64,6 +64,15 @@ export default function DashboardClient() {
     return { user, pass };
   };
 
+  const generateVnIpv6 = () => {
+    // Prefix Viettel: 2403:6200
+    // Prefix VNPT: 2402:800
+    const prefixes = ['2403:6200', '2402:800', '2405:4800'];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const segments = Array.from({ length: 4 }).map(() => Math.floor(Math.random() * 65535).toString(16));
+    return `${prefix}:${segments[0]}:${segments[1]}:${segments[2]}:${segments[3]}:1`;
+  };
+
   const handleDeploy = (config: DeployConfig) => {
     setIsDeploying(true);
     toast({
@@ -84,16 +93,20 @@ export default function DashboardClient() {
           password = password || randomAuth.pass;
         }
 
+        const country = config.country === 'Random' 
+          ? ['Vietnam', 'United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 7)] 
+          : config.country;
+
         return {
           port,
           status: 'LIVE',
           externalStatus: 'WAITING',
           vpsIp: vpsIpBase + (Math.floor(Math.random() * 254) + 1),
-          exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+          exitIp: country === 'Vietnam' ? `171.224.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
           ping: Math.floor(Math.random() * 300) + 50,
-          country: config.country === 'Random' ? ['United States', 'Germany', 'Japan', 'France', 'Singapore', 'Canada'][Math.floor(Math.random() * 6)] : config.country,
+          country,
           speed: parseFloat((Math.random() * 200 + 20).toFixed(2)),
-          ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
+          ipv6: country === 'Vietnam' ? generateVnIpv6() : `2a03:2880:f12f:83:face:b00c:${Math.random().toString(16).slice(2, 6)}:1`,
           username,
           password,
           authEnabled: config.authEnabled
@@ -138,13 +151,18 @@ export default function DashboardClient() {
       checkConnectivity(port);
     } else if (act === 'rotate') {
       const randomAuth = generateRandomAuth();
-      setInstances(prev => prev.map(i => i.port === port ? { 
-        ...i, 
-        exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
-        username: i.authEnabled ? randomAuth.user : undefined,
-        password: i.authEnabled ? randomAuth.pass : undefined
-      } : i));
+      setInstances(prev => prev.map(i => {
+        if (i.port === port) {
+          return { 
+            ...i, 
+            exitIp: i.country === 'Vietnam' ? `171.224.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+            ipv6: i.country === 'Vietnam' ? generateVnIpv6() : `2a03:2880:f12f:83:face:b00c:${Math.random().toString(16).slice(2, 6)}:1`,
+            username: i.authEnabled ? randomAuth.user : undefined,
+            password: i.authEnabled ? randomAuth.pass : undefined
+          };
+        }
+        return i;
+      }));
       toast({ title: "Đã xoay IP/IPv6", description: `Cổng :${port} đã nhận định danh mới.` });
     }
   };
@@ -154,8 +172,8 @@ export default function DashboardClient() {
       const randomAuth = generateRandomAuth();
       return { 
         ...i, 
-        exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        ipv6: `2403:6200:8837:92ae:${Math.random().toString(16).slice(2, 6)}:${Math.random().toString(16).slice(2, 6)}:1`,
+        exitIp: i.country === 'Vietnam' ? `171.224.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}` : `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+        ipv6: i.country === 'Vietnam' ? generateVnIpv6() : `2a03:2880:f12f:83:face:b00c:${Math.random().toString(16).slice(2, 6)}:1`,
         username: i.authEnabled ? randomAuth.user : undefined,
         password: i.authEnabled ? randomAuth.pass : undefined
       };
@@ -182,7 +200,7 @@ export default function DashboardClient() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'proxy_list_vietnam.txt';
+    a.download = 'proxy_list_tor.txt';
     a.click();
     toast({ title: "Xuất dữ liệu thành công", description: "Danh sách Proxy đã được tải về." });
   };

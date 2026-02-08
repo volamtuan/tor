@@ -24,6 +24,7 @@ interface InstanceManagerProps {
 
 const COUNTRIES = [
   'Random',
+  'Vietnam',
   'United States',
   'Germany',
   'Japan',
