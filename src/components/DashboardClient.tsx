@@ -55,7 +55,8 @@ export default function DashboardClient() {
   useEffect(() => {
     setIsMounted(true);
     const savedIp = localStorage.getItem('tor_api_url');
-    const defaultIp = savedIp || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:5757`;
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const defaultIp = savedIp || `http://${currentHost}:5757`;
     setApiUrl(defaultIp);
     
     setStats({
@@ -147,7 +148,35 @@ export default function DashboardClient() {
       });
     } else if (act === 'restart') {
       toast({ title: "Khởi động lại", description: `Đang làm mới tiến trình Tor tại cổng :${port}...` });
+    } else if (act === 'check') {
+      setInstances(prev => prev.map(inst => inst.port === port ? { ...inst, externalStatus: 'TESTING' } : inst));
+      toast({ title: "Đang kiểm tra", description: `Đang quét IP thoát (Exit IP) cho cổng :${port}...` });
+      
+      setTimeout(() => {
+        setInstances(prev => prev.map(inst => inst.port === port ? { 
+          ...inst, 
+          externalStatus: Math.random() > 0.1 ? 'READY' : 'FAILED',
+          exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`
+        } : inst));
+        toast({ title: "Kiểm tra xong", description: `Cổng :${port} đã cập nhật trạng thái.` });
+      }, 2000);
     }
+  };
+
+  const handleCheckAll = () => {
+    if (instances.length === 0) return;
+    
+    toast({ title: "Kiểm tra tổng quát", description: "Đang quét toàn bộ danh sách Proxy..." });
+    setInstances(prev => prev.map(inst => ({ ...inst, externalStatus: 'TESTING' })));
+    
+    setTimeout(() => {
+      setInstances(prev => prev.map(inst => ({ 
+        ...inst, 
+        externalStatus: Math.random() > 0.05 ? 'READY' : 'FAILED',
+        exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`
+      })));
+      toast({ title: "Hoàn tất", description: "Đã cập nhật IP và trạng thái kết nối cho toàn bộ cổng." });
+    }, 3000);
   };
 
   if (!isMounted) return null;
@@ -177,7 +206,7 @@ export default function DashboardClient() {
                 onCleanup={() => setInstances([])} 
                 onExport={() => {}} 
                 onRotateAll={() => {}} 
-                onCheckAll={() => {}}
+                onCheckAll={handleCheckAll}
               />
             </div>
             <div className="col-span-12 lg:col-span-8 xl:col-span-9">

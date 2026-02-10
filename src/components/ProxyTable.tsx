@@ -18,7 +18,8 @@ import {
   ListFilter,
   Eye,
   EyeOff,
-  Skull
+  Skull,
+  Search
 } from 'lucide-react';
 import { Instance } from './DashboardClient';
 import { Button } from '@/components/ui/button';
@@ -183,6 +184,21 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                     <TableCell className="text-right pr-8">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => onAction('check', p.port)} 
+                                className="h-8 w-8 text-primary hover:bg-primary/10"
+                                disabled={p.externalStatus === 'TESTING'}
+                              >
+                                {p.externalStatus === 'TESTING' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Kiểm tra IP thoát</TooltipContent>
+                          </Tooltip>
+
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button variant="ghost" size="icon" onClick={() => onAction('kill', p.port)} className="h-8 w-8 text-destructive hover:bg-destructive/10">

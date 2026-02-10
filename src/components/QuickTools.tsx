@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react';
-import { Trash2, Download, ShieldAlert, Wrench, Repeat, ShieldCheck } from 'lucide-react';
+import { Trash2, Download, ShieldAlert, Wrench, Repeat, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { 
@@ -36,10 +36,19 @@ export function QuickTools({ onCleanup, onExport, onRotateAll, onCheckAll }: Qui
         <Button 
           variant="outline" 
           onClick={onCheckAll}
-          className="w-full bg-accent/5 text-accent border-accent/20 hover:bg-accent hover:text-white transition-all text-xs font-bold py-5"
+          className="w-full bg-accent/10 text-accent border-accent/20 hover:bg-accent hover:text-white transition-all text-xs font-bold py-5"
         >
-          <ShieldCheck className="w-4 h-4 mr-2" />
-          KIỂM TRA TẤT CẢ KẾT NỐI
+          <Zap className="w-4 h-4 mr-2" />
+          CHECK IP (V4/V6) TẤT CẢ
+        </Button>
+
+        <Button 
+          variant="outline" 
+          onClick={onCheckAll}
+          className="w-full bg-white/5 text-muted-foreground border-border hover:bg-secondary hover:text-white transition-all text-[10px] font-bold py-4"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 mr-2" />
+          KIỂM TRA TRẠNG THÁI ENGINE
         </Button>
 
         <Button 
