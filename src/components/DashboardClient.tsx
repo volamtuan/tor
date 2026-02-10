@@ -36,13 +36,12 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// API_BASE points to backend service. In Docker environment, usually localhost if using network host mode
-const API_BASE = 'http://localhost:5757';
-
 export default function DashboardClient() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [serverIp, setServerIp] = useState('127.0.0.1');
+  const [apiBase, setApiBase] = useState('http://localhost:5757');
+  
   const [stats, setStats] = useState<SystemStats>({
     cpu: 0,
     ram: 0,
@@ -56,13 +55,16 @@ export default function DashboardClient() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setServerIp(window.location.hostname);
+      const hostname = window.location.hostname;
+      setServerIp(hostname);
+      // Tự động định cấu hình API Base dựa trên hostname truy cập
+      setApiBase(`http://${hostname}:5757`);
     }
   }, []);
 
   const refreshStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/status`).catch(() => null);
+      const res = await fetch(`${apiBase}/api/status`).catch(() => null);
       if (!res || !res.ok) {
         setStats(prev => ({ ...prev, torStatus: 'offline' }));
         return;
@@ -72,19 +74,19 @@ export default function DashboardClient() {
       setStats(prev => ({
         ...prev,
         torStatus: data.status || 'unknown',
-        cpu: Math.floor(Math.random() * 20) + 10,
-        ram: Math.floor(Math.random() * 10) + 40,
-        torMem: instances.length * 28,
+        cpu: Math.floor(Math.random() * 15) + 5,
+        ram: Math.floor(Math.random() * 10) + 30,
+        torMem: instances.length * 24,
         instances: instances.length
       }));
     } catch (e) {
       setStats(prev => ({ ...prev, torStatus: 'offline' }));
     }
-  }, [instances.length]);
+  }, [apiBase, instances.length]);
 
   const loadInstances = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/check_all_proxies`).catch(() => null);
+      const res = await fetch(`${apiBase}/api/check_all_proxies`).catch(() => null);
       if (!res || !res.ok) return;
       
       const contentType = res.headers.get("content-type");
@@ -110,9 +112,9 @@ export default function DashboardClient() {
         setInstances(mapped);
       }
     } catch (e) {
-      // Silently fail for polling
+      // Silently fail to avoid console noise
     }
-  }, [serverIp]);
+  }, [apiBase, serverIp]);
 
   useEffect(() => {
     refreshStats();
@@ -120,16 +122,16 @@ export default function DashboardClient() {
     const interval = setInterval(() => {
       refreshStats();
       loadInstances();
-    }, 6000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [refreshStats, loadInstances]);
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
-    toast({ title: "Đang triển khai", description: `Đang khởi tạo ${config.count} tunnel...` });
+    toast({ title: "Đang triển khai", description: `Đang khởi tạo ${config.count} tunnel mới...` });
 
     try {
-      const res = await fetch(`${API_BASE}/api/create_tunnels`, {
+      const res = await fetch(`${apiBase}/api/create_tunnels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
@@ -139,13 +141,13 @@ export default function DashboardClient() {
       const data = await res.json();
       
       if (data.ok) {
-        toast({ title: "Thành công", description: `Đã kích hoạt các cổng: ${(data.created || []).join(', ')}` });
+        toast({ title: "Thành công", description: `Đã kích hoạt ${data.created?.length || 0} cổng mới.` });
         loadInstances();
       }
     } catch (e) {
       toast({ 
         title: "Lỗi kết nối", 
-        description: "Không thể gửi lệnh đến Backend. Hãy đảm bảo Backend Flask đang chạy.", 
+        description: "Không thể kết nối Backend. Hãy kiểm tra dịch vụ Flask.", 
         variant: "destructive" 
       });
     } finally {
@@ -160,41 +162,32 @@ export default function DashboardClient() {
       else if (act === 'delete' || act === 'stop') endpoint = `/api/stop_port/${port}`;
       else if (act === 'check') endpoint = `/api/check_proxy/${port}`;
 
-      const res = await fetch(`${API_BASE}${endpoint}`).catch(() => null);
+      const res = await fetch(`${apiBase}${endpoint}`).catch(() => null);
       if (!res || !res.ok) throw new Error("Action failed");
       
       const data = await res.json();
-      
-      if (act === 'check') {
-        toast({ 
-          title: data.status === 'LIVE' ? "Kết nối OK" : "Lỗi kết nối", 
-          description: `IP: ${data.ip || '---'} | Ping: ${data.ping || 0}ms`,
-          variant: data.status === 'LIVE' ? "default" : "destructive"
-        });
-      } else {
-        toast({ title: "Thành công", description: `Lệnh ${act} cho cổng ${port} đã được gửi.` });
-      }
+      toast({ title: "Hành động", description: data.message || "Thao tác thành công." });
       loadInstances();
     } catch (e) {
-      toast({ title: "Lỗi thao tác", description: "Backend không phản hồi.", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Backend không phản hồi.", variant: "destructive" });
     }
   };
 
   const handleGlobalAction = async (action: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/${action}`, { method: 'POST' }).catch(() => null);
-      if (!res || !res.ok) throw new Error("Global action failed");
+      const res = await fetch(`${apiBase}/api/${action}`, { method: 'POST' }).catch(() => null);
+      if (!res || !res.ok) throw new Error("Action failed");
       const data = await res.json();
       toast({ title: "Hệ thống", description: data.message });
       refreshStats();
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask.", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Không thể thực hiện lệnh hệ thống.", variant: "destructive" });
     }
   };
 
   const handleExport = () => {
     if (instances.length === 0) {
-      toast({ title: "Thông báo", description: "Danh sách trống!", variant: "destructive" });
+      toast({ title: "Trống", description: "Chưa có proxy nào để xuất.", variant: "destructive" });
       return;
     }
     const text = instances.map(p => `${p.vpsIp}:${p.port}:${p.username || ''}:${p.password || ''}`).join('\n');
@@ -202,9 +195,9 @@ export default function DashboardClient() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tor_proxies_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `tormaster_proxies_${new Date().getTime()}.txt`;
     a.click();
-    toast({ title: "Thành công", description: "Đã xuất danh sách Proxy" });
+    toast({ title: "Xuất dữ liệu", description: "Đã tải xuống danh sách Proxy." });
   };
 
   return (
@@ -213,9 +206,9 @@ export default function DashboardClient() {
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-card/50 border border-border/50 mb-6 p-1">
-          <TabsTrigger value="dashboard" className="font-bold uppercase tracking-tight">Bảng Điều Khiển</TabsTrigger>
-          <TabsTrigger value="config" className="font-bold uppercase tracking-tight">Cấu Hình Torrc</TabsTrigger>
-          <TabsTrigger value="logs" className="font-bold uppercase tracking-tight">Nhật Ký Tor</TabsTrigger>
+          <TabsTrigger value="dashboard" className="font-bold uppercase">Bảng Điều Khiển</TabsTrigger>
+          <TabsTrigger value="config" className="font-bold uppercase">Cấu Hình torrc</TabsTrigger>
+          <TabsTrigger value="logs" className="font-bold uppercase">Nhật Ký Tor</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-10">
@@ -241,11 +234,11 @@ export default function DashboardClient() {
         </TabsContent>
 
         <TabsContent value="config">
-          <TorrcEditor apiBase={API_BASE} />
+          <TorrcEditor apiBase={apiBase} />
         </TabsContent>
 
         <TabsContent value="logs">
-          <LogViewer apiBase={API_BASE} />
+          <LogViewer apiBase={apiBase} />
         </TabsContent>
       </Tabs>
       

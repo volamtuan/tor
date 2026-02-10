@@ -5,14 +5,26 @@ import subprocess
 import os
 import signal
 import time
-import requests
 import shutil
+import socket
 
 app = Flask(__name__)
 CORS(app)
 
-# Lưu trữ thông tin các port đang chạy: {port: {"proc": process, "status": "LIVE"}}
+# Lưu trữ thông tin các port đang chạy: {port: {"proc": process, "status": "LIVE", "control": control_port}}
 running_proxies = {}
+
+def send_tor_command(control_port, command):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(("127.0.0.1", control_port))
+            s.send(f'AUTHENTICATE ""\r\n'.encode())
+            s.recv(1024)
+            s.send(f'{command}\r\n'.encode())
+            response = s.recv(1024).decode()
+            return "250" in response
+    except:
+        return False
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
@@ -48,7 +60,7 @@ def create_tunnels():
             f"SocksPort 0.0.0.0:{port}",
             f"ControlPort 127.0.0.1:{control_port}",
             f"DataDirectory {data_dir}",
-            "CookieAuthentication 1",
+            "CookieAuthentication 0", # Tắt auth để dễ command line
         ]
         
         if ip_mode == 'v6only':
@@ -62,50 +74,62 @@ def create_tunnels():
 
         try:
             # Khởi chạy Tor
-            proc = subprocess.Popen(['tor', '-f', torrc_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            running_proxies[port] = {"proc": proc, "status": "LIVE", "torrc": torrc_path, "data_dir": data_dir}
+            proc = subprocess.Popen(['tor', '-f', torrc_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            running_proxies[port] = {
+                "proc": proc, 
+                "status": "LIVE", 
+                "torrc": torrc_path, 
+                "data_dir": data_dir,
+                "control": control_port
+            }
             created.append(port)
-            time.sleep(0.5) 
+            time.sleep(0.2) 
         except Exception as e:
             print(f"Error starting Tor on port {port}: {e}")
 
     return jsonify({"ok": True, "created": created})
 
+@app.route('/api/newnym/<int:port>', methods=['GET'])
+def rotate_ip(port):
+    if port in running_proxies:
+        control_port = running_proxies[port]['control']
+        success = send_tor_command(control_port, "SIGNAL NEWNYM")
+        return jsonify({"ok": success, "message": "Signal NEWNYM sent" if success else "Failed to send signal"})
+    return jsonify({"ok": False, "message": "Port not found"}), 404
+
 @app.route('/api/check_all_proxies', methods=['GET'])
 def check_all():
     results = []
     for port in list(running_proxies.keys()):
-        # Thực tế nên gọi curl qua proxy để lấy IP thật
+        # Mocking IP info for UI - In real use, you'd perform a curl through the proxy
         results.append({
             "port": port,
             "status": "LIVE",
             "ip": f"103.153.64.{port % 255}",
-            "ping": 120 + (port % 50),
+            "ping": 40 + (port % 20),
             "country": "Vietnam",
             "ipMode": "v4v6"
         })
     return jsonify(results)
 
-@app.route('/api/stop', methods=['POST'])
-def stop_all():
-    for port, info in running_proxies.items():
-        try:
-            info['proc'].terminate()
-            if os.path.exists(info['torrc']): os.remove(info['torrc'])
-            if os.path.exists(info['data_dir']): shutil.rmtree(info['data_dir'])
-        except:
-            pass
-    running_proxies.clear()
-    return jsonify({"message": "All proxies stopped and cleaned"})
-
 @app.route('/api/stop_port/<int:port>', methods=['GET'])
 def stop_port(port):
     if port in running_proxies:
         info = running_proxies[port]
-        info['proc'].terminate()
+        try:
+            info['proc'].terminate()
+            if os.path.exists(info['torrc']): os.remove(info['torrc'])
+            if os.path.exists(info['data_dir']): shutil.rmtree(info['data_dir'])
+        except: pass
         del running_proxies[port]
         return jsonify({"ok": True, "message": f"Port {port} stopped"})
     return jsonify({"ok": False, "message": "Port not found"}), 404
+
+@app.route('/api/stop', methods=['POST'])
+def stop_all():
+    for port in list(running_proxies.keys()):
+        stop_port(port)
+    return jsonify({"message": "All proxies stopped and cleaned"})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5757)
