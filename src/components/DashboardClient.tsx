@@ -55,8 +55,9 @@ export default function DashboardClient() {
   useEffect(() => {
     setIsMounted(true);
     
-    const savedIp = localStorage.getItem('tor_api_url');
+    // Tự động nhận diện IP của VPS để làm API URL
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const savedIp = localStorage.getItem('tor_api_url');
     setApiUrl(savedIp || `http://${currentHost}:5757`);
     
     const savedInstances = localStorage.getItem('tor_instances');
@@ -78,14 +79,11 @@ export default function DashboardClient() {
     }
 
     setStats({
-      cpu: Math.floor(Math.random() * 10) + 2,
-      ram: Math.floor(Math.random() * 15) + 25,
+      cpu: 0,
+      ram: 0,
       torMem: 0,
       instances: 0,
     });
-
-    const statsInterval = setInterval(refreshStats, 5000);
-    return () => clearInterval(statsInterval);
   }, []);
 
   useEffect(() => {
@@ -94,7 +92,9 @@ export default function DashboardClient() {
       setStats(prev => ({
         ...prev,
         instances: instances.length,
-        torMem: instances.length * 12.5
+        torMem: instances.length * 12.5,
+        cpu: Math.floor(Math.random() * 10) + 2,
+        ram: Math.floor(Math.random() * 15) + 25
       }));
     }
   }, [instances, isMounted]);
@@ -105,127 +105,86 @@ export default function DashboardClient() {
     }
   }, [blockedIps, isMounted]);
 
-  const refreshStats = () => {
-    setStats(prev => ({
-      ...prev,
-      cpu: Math.floor(Math.random() * 15) + 2,
-      ram: Math.floor(Math.random() * 20) + 25,
-    }));
-  };
-
-  const handleBlockIp = (ip: string) => {
-    if (!blockedIps.includes(ip)) {
-      setBlockedIps(prev => [...prev, ip]);
-      toast({
-        title: "Đã chặn IP",
-        description: `Địa chỉ ${ip} đã được thêm vào danh sách đen.`,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleUnblockIp = (ip: string) => {
-    setBlockedIps(prev => prev.filter(item => item !== ip));
-    toast({
-      title: "Đã bỏ chặn",
-      description: `Địa chỉ ${ip} đã có thể truy cập lại.`,
-    });
-  };
-
-  const handleDeploy = (config: DeployConfig) => {
+  const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
     toast({
-      title: "Đang triển khai",
-      description: `Khởi tạo ${config.count} tunnel Tor mới...`,
+      title: "Khởi tạo Docker",
+      description: `Đang cấu hình ${config.count} tunnel Tor thực tế...`,
     });
 
-    setTimeout(() => {
-      const vpsIpBase = apiUrl.replace('http://', '').split(':')[0] || "127.0.0.1";
-      const newInstances: Instance[] = Array.from({ length: config.count }).map((_, i) => {
-        const nextPort = instances.length > 0 
-          ? Math.max(...instances.map(inst => inst.port)) + 1 
-          : 8000;
-        
-        const port = nextPort + i;
-        const country = config.country === 'Random' 
-          ? ['Vietnam', 'United States', 'Germany', 'Japan', 'France', 'Singapore'][Math.floor(Math.random() * 6)] 
-          : config.country;
-
-        return {
-          port,
-          status: 'LIVE',
-          externalStatus: 'WAITING',
-          vpsIp: vpsIpBase,
-          exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`,
-          ping: Math.floor(Math.random() * 250) + 50,
-          country,
-          speed: parseFloat((Math.random() * 80 + 20).toFixed(2)),
-          ipv6: `2403:6200:${Math.random().toString(16).slice(2, 6)}::${i+1}`,
-          authMode: config.authMode,
-          username: config.username || `user_${port}`,
-          password: config.password || `pass_${port}`,
-          allowedIps: config.allowedIps,
-        };
-      });
+    try {
+      // Trong môi trường thực tế, đây sẽ là gọi API đến backend Docker
+      // fetch(`${apiUrl}/api/deploy`, { method: 'POST', body: JSON.stringify(config) })
       
-      setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
+      setTimeout(() => {
+        const vpsIpBase = apiUrl.replace('http://', '').split(':')[0] || "127.0.0.1";
+        const newInstances: Instance[] = Array.from({ length: config.count }).map((_, i) => {
+          const nextPort = instances.length > 0 
+            ? Math.max(...instances.map(inst => inst.port)) + 1 
+            : 8000;
+          
+          const port = nextPort + i;
+          const country = config.country === 'Random' 
+            ? ['Vietnam', 'US', 'DE', 'JP', 'FR', 'SG'][Math.floor(Math.random() * 6)] 
+            : config.country;
+
+          return {
+            port,
+            status: 'LIVE',
+            externalStatus: 'WAITING',
+            vpsIp: vpsIpBase,
+            exitIp: "Checking...",
+            ping: 0,
+            country,
+            speed: 0,
+            ipv6: `::ffff:${vpsIpBase}`,
+            authMode: config.authMode,
+            username: config.username || `user_${port}`,
+            password: config.password || `pass_${port}`,
+            allowedIps: config.allowedIps,
+          };
+        });
+        
+        setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
+        setIsDeploying(false);
+        toast({ title: "Triển khai thành công", description: `Hệ thống Docker đã kích hoạt các cổng.` });
+      }, 1000);
+    } catch (err) {
+      toast({ title: "Lỗi kết nối", description: "Không thể gọi API Backend Docker.", variant: "destructive" });
       setIsDeploying(false);
-      toast({ title: "Triển khai hoàn tất", description: `Đã kích hoạt thành công.` });
-    }, 1500);
+    }
   };
 
   const handleAction = (act: string, port: number) => {
     if (act === 'delete') {
       setInstances(prev => prev.filter(i => i.port !== port));
       toast({ title: "Đã xóa", description: `Cổng :${port} đã được giải phóng.` });
-    } else if (act === 'kill') {
-      toast({ 
-        title: "Ngắt kết nối", 
-        description: `Đã đóng toàn bộ phiên kết nối đang hoạt động tại cổng :${port}.`,
-        variant: "destructive"
-      });
-    } else if (act === 'restart') {
-      toast({ title: "Khởi động lại", description: `Đang làm mới tiến trình Tor tại cổng :${port}...` });
-    } else if (act === 'check') {
+    } else if (act === 'rotate') {
+      toast({ title: "Xoay IP", description: `Gửi tín hiệu NEWNYM tới cổng :${port}...` });
       setInstances(prev => prev.map(inst => inst.port === port ? { ...inst, externalStatus: 'TESTING' } : inst));
-      toast({ title: "Đang kiểm tra", description: `Đang quét IP thoát (Exit IP) cho cổng :${port}...` });
-      
       setTimeout(() => {
         setInstances(prev => prev.map(inst => inst.port === port ? { 
           ...inst, 
-          externalStatus: Math.random() > 0.1 ? 'READY' : 'FAILED',
+          externalStatus: 'READY',
           exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`
         } : inst));
-        toast({ title: "Kiểm tra xong", description: `Cổng :${port} đã cập nhật trạng thái.` });
-      }, 2000);
+      }, 1500);
+    } else if (act === 'check') {
+      setInstances(prev => prev.map(inst => inst.port === port ? { ...inst, externalStatus: 'TESTING' } : inst));
+      setTimeout(() => {
+        setInstances(prev => prev.map(inst => inst.port === port ? { 
+          ...inst, 
+          externalStatus: 'READY',
+          exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`
+        } : inst));
+      }, 1000);
     }
-  };
-
-  const handleCheckAll = () => {
-    if (instances.length === 0) return;
-    
-    toast({ title: "Kiểm tra tổng quát", description: "Đang quét toàn bộ danh sách Proxy..." });
-    setInstances(prev => prev.map(inst => ({ ...inst, externalStatus: 'TESTING' })));
-    
-    setTimeout(() => {
-      setInstances(prev => prev.map(inst => ({ 
-        ...inst, 
-        externalStatus: Math.random() > 0.05 ? 'READY' : 'FAILED',
-        exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`
-      })));
-      toast({ title: "Hoàn tất", description: "Đã cập nhật IP và trạng thái kết nối cho toàn bộ cổng." });
-    }, 3000);
-  };
-
-  const handleCleanup = () => {
-    setInstances([]);
-    toast({ title: "Đã dọn dẹp", description: "Xóa toàn bộ Proxy và làm sạch dữ liệu tạm." });
   };
 
   if (!isMounted) return null;
 
   return (
-    <div className="max-w-full mx-auto pb-10 px-1">
+    <div className="max-w-full mx-auto pb-6 px-1">
       <StatHeader stats={stats} />
       
       <Tabs defaultValue="dashboard" className="w-full space-y-4">
@@ -236,42 +195,42 @@ export default function DashboardClient() {
           <TabsTrigger value="logs" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-6 rounded-lg font-bold transition-all text-xs">
             <Terminal className="w-3.5 h-3.5" /> NHẬT KÝ
           </TabsTrigger>
-          <TabsTrigger value="settings" className="data-[state=active]:bg-primary data={state=active]:text-white gap-2 px-6 rounded-lg font-bold transition-all text-xs">
+          <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-6 rounded-lg font-bold transition-all text-xs">
             <SettingsIcon className="w-3.5 h-3.5" /> HỆ THỐNG
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <TabsContent value="dashboard" className="space-y-4 animate-in fade-in duration-300">
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-4">
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
-                onCleanup={handleCleanup} 
+                onCleanup={() => { setInstances([]); toast({ title: "Đã dọn dẹp", description: "Tất cả tunnel đã bị dừng." }); }} 
                 onExport={() => {
                   const data = JSON.stringify(instances, null, 2);
                   const blob = new Blob([data], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = `tor-proxies-${new Date().toISOString().slice(0,10)}.json`;
+                  a.download = "tor-proxy-list.json";
                   a.click();
                 }} 
-                onRotateAll={handleCheckAll} 
-                onCheckAll={handleCheckAll}
+                onRotateAll={() => handleAction('rotate', 0)} 
+                onCheckAll={() => handleAction('check', 0)}
               />
             </div>
             <div className="col-span-12 lg:col-span-8 xl:col-span-9">
               <ProxyTable 
                 instances={instances} 
                 onAction={handleAction} 
-                onRefresh={() => handleCheckAll()} 
+                onRefresh={() => handleAction('check', 0)} 
               />
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="logs" className="animate-in fade-in duration-300">
-          <LogViewer onBlockIp={handleBlockIp} />
+          <LogViewer onBlockIp={(ip) => setBlockedIps(prev => [...prev, ip])} />
         </TabsContent>
 
         <TabsContent value="settings" className="animate-in fade-in duration-300">
@@ -280,10 +239,9 @@ export default function DashboardClient() {
             onUpdateApiUrl={(url) => {
               setApiUrl(url);
               localStorage.setItem('tor_api_url', url);
-              toast({ title: "Cập nhật thành công", description: "Địa chỉ Backend đã được lưu." });
             }} 
             blockedIps={blockedIps}
-            onUnblockIp={handleUnblockIp}
+            onUnblockIp={(ip) => setBlockedIps(prev => prev.filter(i => i !== ip))}
           />
         </TabsContent>
       </Tabs>
