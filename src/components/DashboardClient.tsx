@@ -54,27 +54,28 @@ export default function DashboardClient() {
   useEffect(() => {
     setIsMounted(true);
     const savedIp = localStorage.getItem('tor_api_url');
-    const defaultIp = savedIp || `http://${window.location.hostname}:5757`;
+    // Fallback to current host if no saved IP
+    const defaultIp = savedIp || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:5757`;
     setApiUrl(defaultIp);
     
-    // Initial stats after hydration
+    // Initial stats after hydration to avoid mismatch
     setStats({
-      cpu: Math.floor(Math.random() * 25) + 5,
-      ram: Math.floor(Math.random() * 40) + 30,
+      cpu: Math.floor(Math.random() * 15) + 5,
+      ram: Math.floor(Math.random() * 20) + 30,
       torMem: 0,
       instances: 0,
     });
 
-    const statsInterval = setInterval(refreshStats, 3000);
+    const statsInterval = setInterval(refreshStats, 5000);
     return () => clearInterval(statsInterval);
   }, []);
 
   const refreshStats = () => {
     setStats(prev => ({
       ...prev,
-      cpu: Math.floor(Math.random() * 25) + 5,
-      ram: Math.floor(Math.random() * 40) + 30,
-      torMem: instances.length * 15, // Giả lập 15MB mỗi instance
+      cpu: Math.floor(Math.random() * 20) + 5,
+      ram: Math.floor(Math.random() * 25) + 30,
+      torMem: instances.length * 12,
       instances: instances.length,
     }));
   };
@@ -82,7 +83,7 @@ export default function DashboardClient() {
   const generateRandomAuth = () => {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     const user = "tor_" + Array.from({ length: 4 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
-    const pass = Array.from({ length: 8 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
+    const pass = Array.from({ length: 10 }).map(() => chars[Math.floor(Math.random() * chars.length)]).join('');
     return { user, pass };
   };
 
@@ -90,7 +91,7 @@ export default function DashboardClient() {
     setIsDeploying(true);
     toast({
       title: "Đang triển khai",
-      description: `Khởi tạo ${config.count} tunnel Tor mới...`,
+      description: `Khởi tạo ${config.count} tunnel Tor mới với chế độ ${config.authMode}...`,
     });
 
     setTimeout(() => {
@@ -99,7 +100,7 @@ export default function DashboardClient() {
         const port = 8000 + instances.length + i;
         const randomAuth = generateRandomAuth();
         const country = config.country === 'Random' 
-          ? ['Vietnam', 'United States', 'Germany', 'Japan'][Math.floor(Math.random() * 4)] 
+          ? ['Vietnam', 'United States', 'Germany', 'Japan', 'France'][Math.floor(Math.random() * 5)] 
           : config.country;
 
         return {
@@ -107,11 +108,11 @@ export default function DashboardClient() {
           status: 'LIVE',
           externalStatus: 'WAITING',
           vpsIp: vpsIpBase,
-          exitIp: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.x.x`,
-          ping: Math.floor(Math.random() * 300) + 50,
+          exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`,
+          ping: Math.floor(Math.random() * 250) + 50,
           country,
-          speed: parseFloat((Math.random() * 100 + 10).toFixed(2)),
-          ipv6: `2403:6200:${Math.random().toString(16).slice(2, 6)}::1`,
+          speed: parseFloat((Math.random() * 80 + 20).toFixed(2)),
+          ipv6: `2403:6200:${Math.random().toString(16).slice(2, 6)}::${i+1}`,
           authMode: config.authMode,
           username: config.authMode === 'USER_PASS' ? (config.username || randomAuth.user) : undefined,
           password: config.authMode === 'USER_PASS' ? (config.password || randomAuth.pass) : undefined,
@@ -120,17 +121,17 @@ export default function DashboardClient() {
       });
       setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
       setIsDeploying(false);
-      toast({ title: "Triển khai hoàn tất", description: `Đã kích hoạt ${config.count} instance.` });
+      toast({ title: "Triển khai hoàn tất", description: `Đã kích hoạt ${config.count} instance thành công.` });
     }, 1500);
   };
 
   const handleAction = (act: string, port: number) => {
     if (act === 'delete') {
       setInstances(prev => prev.filter(i => i.port !== port));
-      toast({ title: "Đã xóa", description: `Cổng :${port} đã dừng.` });
+      toast({ title: "Đã dừng", description: `Cổng :${port} đã được gỡ bỏ.` });
     } else if (act === 'restart') {
       setInstances(prev => prev.map(i => i.port === port ? { ...i, externalStatus: 'WAITING' } : i));
-      toast({ title: "Đang khởi động lại", description: `Đang làm mới tiến trình tại cổng :${port}...` });
+      toast({ title: "Đang khởi động lại", description: `Đang làm mới tiến trình Tor tại cổng :${port}...` });
     }
   };
 
@@ -146,10 +147,10 @@ export default function DashboardClient() {
             <LayoutDashboard className="w-4 h-4" /> BẢNG ĐIỀU KHIỂN
           </TabsTrigger>
           <TabsTrigger value="logs" className="data-[state=active]:bg-primary gap-2 px-6">
-            <Terminal className="w-4 h-4" /> NHẬT KÝ HỆ THỐNG
+            <Terminal className="w-4 h-4" /> NHẬT KÝ & TRUY CẬP
           </TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-primary gap-2 px-6">
-            <SettingsIcon className="w-4 h-4" /> CÀI ĐẶT & HỆ THỐNG
+            <SettingsIcon className="w-4 h-4" /> CÀI ĐẶT HỆ THỐNG
           </TabsTrigger>
         </TabsList>
 
@@ -159,9 +160,9 @@ export default function DashboardClient() {
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
                 onCleanup={() => setInstances([])} 
-                onExport={() => toast({ title: "Xuất dữ liệu", description: "Đã tải danh sách proxy." })} 
-                onRotateAll={() => toast({ title: "Xoay IP", description: "Đang yêu cầu IP mới cho tất cả..." })} 
-                onCheckAll={() => toast({ title: "Kiểm tra", description: "Bắt đầu quét kết nối..." })}
+                onExport={() => toast({ title: "Xuất dữ liệu", description: "Đã tải danh sách proxy (TXT/JSON)." })} 
+                onRotateAll={() => toast({ title: "Xoay IP", description: "Đang yêu cầu IP mới cho tất cả các cổng..." })} 
+                onCheckAll={() => toast({ title: "Kiểm tra", description: "Bắt đầu quét kết nối toàn hệ thống..." })}
               />
             </div>
             <div className="col-span-12 lg:col-span-8 xl:col-span-9">
@@ -178,7 +179,7 @@ export default function DashboardClient() {
           <SystemSettings apiUrl={apiUrl} onUpdateApiUrl={(url) => {
             setApiUrl(url);
             localStorage.setItem('tor_api_url', url);
-            toast({ title: "Đã cập nhật", description: "Địa chỉ API mới đã được lưu." });
+            toast({ title: "Đã cập nhật", description: "Địa chỉ API mới đã được lưu vào bộ nhớ." });
           }} />
         </TabsContent>
       </Tabs>
