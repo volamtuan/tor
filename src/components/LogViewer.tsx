@@ -2,13 +2,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Terminal, Trash2, Pause, Play, Activity, Shield } from 'lucide-react';
+import { Terminal, Trash2, Pause, Play, Activity, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-export function LogViewer() {
+interface LogViewerProps {
+  onBlockIp?: (ip: string) => void;
+}
+
+export function LogViewer({ onBlockIp }: LogViewerProps) {
   const [systemLogs, setSystemLogs] = useState<string[]>([]);
   const [accessLogs, setAccessLogs] = useState<{ id: number, time: string, ip: string, port: number, status: string }[]>([]);
   const [isPaused, setIsPaused] = useState(false);
@@ -21,7 +26,6 @@ export function LogViewer() {
     const interval = setInterval(() => {
       const timestamp = new Date().toLocaleTimeString();
       
-      // Simulate System Logs
       const sysEvents = [
         `[${timestamp}] Tor connection established on port 800${Math.floor(Math.random() * 9)}`,
         `[${timestamp}] New circuit established via United States`,
@@ -30,16 +34,15 @@ export function LogViewer() {
       ];
       setSystemLogs(prev => [...prev, sysEvents[Math.floor(Math.random() * sysEvents.length)]].slice(-50));
 
-      // Simulate Access Logs
       const accessEvent = {
-        id: Date.now(),
+        id: Date.now() + Math.random(),
         time: timestamp,
         ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
         port: 8000 + Math.floor(Math.random() * 10),
         status: Math.random() > 0.1 ? 'ACCEPTED' : 'DENIED'
       };
       setAccessLogs(prev => [...prev, accessEvent].slice(-50));
-    }, 1500);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [isPaused]);
@@ -77,7 +80,7 @@ export function LogViewer() {
                 <p className="text-muted-foreground italic opacity-50">Đang chờ tín hiệu truy cập...</p>
               ) : (
                 accessLogs.map((log) => (
-                  <div key={log.id} className="flex gap-3 hover:bg-white/5 py-1 px-2 rounded transition-colors items-center">
+                  <div key={log.id} className="flex gap-3 hover:bg-white/5 py-1 px-2 rounded transition-colors items-center group/log">
                     <span className="text-primary/50 shrink-0">{log.time}</span>
                     <Badge variant="outline" className="text-[9px] font-mono bg-primary/5 text-primary border-primary/20">PORT :{log.port}</Badge>
                     <span className="text-white/80 font-bold shrink-0">{log.ip}</span>
@@ -85,6 +88,23 @@ export function LogViewer() {
                     <span className={log.status === 'ACCEPTED' ? 'text-accent' : 'text-destructive'}>
                       {log.status}
                     </span>
+                    <div className="ml-auto opacity-0 group-hover/log:opacity-100 transition-opacity">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-destructive hover:bg-destructive/20"
+                              onClick={() => onBlockIp?.(log.ip)}
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-destructive text-white border-none">Chặn IP này</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 ))
               )}

@@ -17,7 +17,8 @@ import {
   Unlock,
   ListFilter,
   Eye,
-  EyeOff
+  EyeOff,
+  Skull
 } from 'lucide-react';
 import { Instance } from './DashboardClient';
 import { Button } from '@/components/ui/button';
@@ -184,11 +185,11 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" onClick={() => onAction('check', p.port)} className="h-8 w-8 text-primary hover:bg-primary/10">
-                                <ShieldCheck className="w-4 h-4" />
+                              <Button variant="ghost" size="icon" onClick={() => onAction('kill', p.port)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                                <Skull className="w-4 h-4" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Kiểm tra kết nối</TooltipContent>
+                            <TooltipContent>Ngắt toàn bộ kết nối</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
