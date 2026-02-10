@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutDashboard, Terminal, Settings as SettingsIcon } from 'lucide-react';
 
+export type AuthMode = 'NONE' | 'USER_PASS' | 'IP_WHITELIST';
+
 export type Instance = {
   port: number;
   status: 'LIVE' | 'DIE' | 'CHECKING';
@@ -22,9 +24,10 @@ export type Instance = {
   country: string;
   speed: number;
   ipv6: string;
+  authMode: AuthMode;
   username?: string;
   password?: string;
-  authEnabled: boolean;
+  allowedIps?: string;
 };
 
 export type SystemStats = {
@@ -54,18 +57,26 @@ export default function DashboardClient() {
     const defaultIp = savedIp || `http://${window.location.hostname}:5757`;
     setApiUrl(defaultIp);
     
-    refreshStats();
-    const statsInterval = setInterval(refreshStats, 3000);
-    return () => clearInterval(statsInterval);
-  }, [instances.length]);
-
-  const refreshStats = () => {
+    // Initial stats after hydration
     setStats({
       cpu: Math.floor(Math.random() * 25) + 5,
       ram: Math.floor(Math.random() * 40) + 30,
-      torMem: Math.floor(Math.random() * 500) + 120,
-      instances: instances.length,
+      torMem: 0,
+      instances: 0,
     });
+
+    const statsInterval = setInterval(refreshStats, 3000);
+    return () => clearInterval(statsInterval);
+  }, []);
+
+  const refreshStats = () => {
+    setStats(prev => ({
+      ...prev,
+      cpu: Math.floor(Math.random() * 25) + 5,
+      ram: Math.floor(Math.random() * 40) + 30,
+      torMem: instances.length * 15, // Giả lập 15MB mỗi instance
+      instances: instances.length,
+    }));
   };
 
   const generateRandomAuth = () => {
@@ -101,9 +112,10 @@ export default function DashboardClient() {
           country,
           speed: parseFloat((Math.random() * 100 + 10).toFixed(2)),
           ipv6: `2403:6200:${Math.random().toString(16).slice(2, 6)}::1`,
-          username: config.authEnabled ? (config.username || randomAuth.user) : undefined,
-          password: config.authEnabled ? (config.password || randomAuth.pass) : undefined,
-          authEnabled: config.authEnabled
+          authMode: config.authMode,
+          username: config.authMode === 'USER_PASS' ? (config.username || randomAuth.user) : undefined,
+          password: config.authMode === 'USER_PASS' ? (config.password || randomAuth.pass) : undefined,
+          allowedIps: config.authMode === 'IP_WHITELIST' ? config.allowedIps : undefined,
         };
       });
       setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
@@ -143,7 +155,7 @@ export default function DashboardClient() {
 
         <TabsContent value="dashboard" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
           <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-12 lg:col-span-3 space-y-6">
+            <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-6">
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
                 onCleanup={() => setInstances([])} 
@@ -152,7 +164,7 @@ export default function DashboardClient() {
                 onCheckAll={() => toast({ title: "Kiểm tra", description: "Bắt đầu quét kết nối..." })}
               />
             </div>
-            <div className="col-span-12 lg:col-span-9">
+            <div className="col-span-12 lg:col-span-8 xl:col-span-9">
               <ProxyTable instances={instances} onAction={handleAction} onRefresh={() => {}} />
             </div>
           </div>

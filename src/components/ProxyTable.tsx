@@ -14,7 +14,10 @@ import {
   Wifi,
   WifiOff,
   Loader2,
-  Unlock
+  Unlock,
+  ListFilter,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Instance } from './DashboardClient';
 import { Button } from '@/components/ui/button';
@@ -29,6 +32,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ProxyTableProps {
   instances: Instance[];
@@ -37,6 +41,12 @@ interface ProxyTableProps {
 }
 
 export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) {
+  const [showPasswords, setShowPasswords] = React.useState<Record<number, boolean>>({});
+
+  const togglePassword = (port: number) => {
+    setShowPasswords(prev => ({ ...prev, [port]: !prev[port] }));
+  };
+
   return (
     <Card className="glass-card shadow-2xl overflow-hidden border-border/40">
       <div className="p-5 bg-secondary/30 border-b border-border flex justify-between items-center">
@@ -66,7 +76,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
             <TableHeader className="bg-background/40">
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="w-[180px] text-muted-foreground font-bold uppercase text-[10px] tracking-widest pl-8">VPS IP & Port</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Xác Thực (User:Pass)</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Xác Thực (Auth Info)</TableHead>
                 <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Định Danh Quốc Tế</TableHead>
                 <TableHead className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-center">Kết Nối</TableHead>
                 <TableHead className="text-right pr-8 text-muted-foreground font-bold uppercase text-[10px] tracking-widest">Thao Tác</TableHead>
@@ -97,7 +107,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                       </div>
                     </TableCell>
                     <TableCell>
-                      {p.authEnabled ? (
+                      {p.authMode === 'USER_PASS' ? (
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1.5">
                             <Lock className="w-3 h-3 text-muted-foreground" />
@@ -105,13 +115,33 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                           </div>
                           <div className="flex items-center gap-1.5">
                             <div className="w-3" />
-                            <span className="font-mono text-[10px] text-muted-foreground">{p.password}</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {showPasswords[p.port] ? p.password : '••••••••'}
+                            </span>
+                            <button onClick={() => togglePassword(p.port)} className="text-muted-foreground hover:text-white ml-1">
+                              {showPasswords[p.port] ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
+                            </button>
                           </div>
+                        </div>
+                      ) : p.authMode === 'IP_WHITELIST' ? (
+                        <div className="flex items-center gap-1.5">
+                          <ListFilter className="w-3 h-3 text-accent" />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="text-[10px] font-bold text-accent hover:underline uppercase">Xem DS IP cho phép</button>
+                            </PopoverTrigger>
+                            <PopoverContent className="glass-card w-64 p-3">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase mb-2 border-b border-border pb-1">Whitelist IPs</p>
+                              <pre className="text-[11px] font-mono text-white leading-tight overflow-x-auto max-h-32">
+                                {p.allowedIps || 'Chưa cấu hình IP'}
+                              </pre>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 opacity-40">
                           <Unlock className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground italic">Không xác thực</span>
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground italic">No Authentication</span>
                         </div>
                       )}
                     </TableCell>
