@@ -59,13 +59,13 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
             <Network className="w-5 h-5 text-primary" />
           </div>
           <div className="flex flex-col">
-            <span className="text-white font-black text-lg tracking-tight uppercase">Tunnel List</span>
+            <span className="text-white font-black text-lg tracking-tight uppercase">Danh sách Tunnel</span>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-mono text-[9px]">
-                {instances.length} ACTIVE
+                {instances.length} ĐANG CHẠY
               </Badge>
               <span className="text-[9px] text-muted-foreground font-bold flex items-center gap-1 uppercase">
-                <Activity className="w-3 h-3" /> Monitor
+                <Activity className="w-3 h-3" /> Giám sát
               </span>
             </div>
           </div>
@@ -77,7 +77,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
           className="bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-white transition-all duration-300 rounded-lg px-3 font-bold text-[10px]"
         >
           <RefreshCw className="w-3 h-3 mr-1.5" />
-          REFRESH ALL
+          LÀM MỚI TẤT CẢ
         </Button>
       </div>
       
@@ -86,11 +86,11 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
           <Table>
             <TableHeader className="bg-background/60">
               <TableRow className="border-border/50 hover:bg-transparent">
-                <TableHead className="w-[180px] text-muted-foreground font-bold uppercase text-[9px] tracking-widest pl-6 py-3">VPS & Port</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest py-3">Security</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest py-3">Identities</TableHead>
-                <TableHead className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest text-center py-3">Status</TableHead>
-                <TableHead className="text-right pr-6 text-muted-foreground font-bold uppercase text-[9px] tracking-widest py-3">Actions</TableHead>
+                <TableHead className="w-[180px] text-muted-foreground font-bold uppercase text-[9px] tracking-widest pl-6 py-3">VPS & Cổng</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest py-3">Bảo mật</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest py-3">Định danh</TableHead>
+                <TableHead className="text-muted-foreground font-bold uppercase text-[9px] tracking-widest text-center py-3">Trạng thái</TableHead>
+                <TableHead className="text-right pr-6 text-muted-foreground font-bold uppercase text-[9px] tracking-widest py-3">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border/20">
@@ -102,8 +102,8 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                         <Zap className="w-10 h-10" />
                       </div>
                       <div className="space-y-1">
-                        <p className="font-black uppercase tracking-[0.1em] text-md">Empty System</p>
-                        <p className="text-[10px] font-medium uppercase tracking-widest">Deploy a tunnel to start</p>
+                        <p className="font-black uppercase tracking-[0.1em] text-md">Hệ thống trống</p>
+                        <p className="text-[10px] font-medium uppercase tracking-widest">Triển khai tunnel để bắt đầu</p>
                       </div>
                     </div>
                   </TableCell>
@@ -151,16 +151,16 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                           <ListFilter className="w-3 h-3 text-accent" />
                           <Popover>
                             <PopoverTrigger asChild>
-                              <button className="text-[9px] font-black text-accent hover:text-accent/80 underline decoration-dotted uppercase tracking-wider">ACL LIST</button>
+                              <button className="text-[9px] font-black text-accent hover:text-accent/80 underline decoration-dotted uppercase tracking-wider">DS TRUY CẬP</button>
                             </PopoverTrigger>
                             <PopoverContent className="glass-card w-64 p-3 shadow-2xl border-accent/30 rounded-xl backdrop-blur-xl">
                               <div className="flex items-center gap-2 mb-2 border-b border-border/50 pb-1.5">
                                 <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                                <span className="text-[10px] font-black text-white uppercase tracking-widest">Authorized IPs</span>
+                                <span className="text-[10px] font-black text-white uppercase tracking-widest">IP Cho phép</span>
                               </div>
                               <ScrollArea className="max-h-32">
                                 <pre className="text-[10px] font-mono text-accent leading-relaxed bg-black/40 p-1.5 rounded-lg border border-accent/10">
-                                  {p.allowedIps || 'No IPs defined'}
+                                  {p.allowedIps || 'Không có IP'}
                                 </pre>
                               </ScrollArea>
                             </PopoverContent>
@@ -169,7 +169,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                       ) : (
                         <div className="flex items-center gap-1.5 opacity-30 group-hover:opacity-60 transition-opacity">
                           <Unlock className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[9px] uppercase font-bold text-muted-foreground italic tracking-widest">Anonymous</span>
+                          <span className="text-[9px] uppercase font-bold text-muted-foreground italic tracking-widest">Ẩn danh</span>
                         </div>
                       )}
                     </TableCell>
@@ -193,12 +193,12 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                         ) : p.externalStatus === 'READY' ? (
                           <div className="flex flex-col items-center">
                             <Wifi className="w-3.5 h-3.5 text-accent" />
-                            <span className="text-[7px] font-black text-accent uppercase tracking-widest mt-0.5">READY</span>
+                            <span className="text-[7px] font-black text-accent uppercase tracking-widest mt-0.5">SẴN SÀNG</span>
                           </div>
                         ) : p.externalStatus === 'FAILED' ? (
                           <div className="flex flex-col items-center">
                             <WifiOff className="w-3.5 h-3.5 text-destructive" />
-                            <span className="text-[7px] font-black text-destructive uppercase tracking-widest mt-0.5">FAIL</span>
+                            <span className="text-[7px] font-black text-destructive uppercase tracking-widest mt-0.5">LỖI</span>
                           </div>
                         ) : (
                           <Wifi className="w-3.5 h-3.5 text-muted-foreground opacity-20" />
@@ -214,7 +214,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                                 <Search className="w-3.5 h-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent className="text-[10px]">Check IP</TooltipContent>
+                            <TooltipContent className="text-[10px]">Kiểm tra IP</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -223,7 +223,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                                 <Skull className="w-3.5 h-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent className="text-[10px]">Kill All</TooltipContent>
+                            <TooltipContent className="text-[10px]">Ngắt kết nối</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -232,7 +232,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                                 <Repeat className="w-3.5 h-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent className="text-[10px]">New Identity</TooltipContent>
+                            <TooltipContent className="text-[10px]">Đổi IP mới</TooltipContent>
                           </Tooltip>
 
                           <Tooltip>
@@ -241,7 +241,7 @@ export function ProxyTable({ instances, onAction, onRefresh }: ProxyTableProps) 
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent className="text-[10px]">Remove</TooltipContent>
+                            <TooltipContent className="text-[10px]">Gỡ bỏ</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>

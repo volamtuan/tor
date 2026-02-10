@@ -96,10 +96,10 @@ export function AppSidebar() {
         <div className="bg-primary/5 rounded-xl p-3 border border-primary/20">
           <div className="flex items-center gap-2 mb-1">
             <Cpu className="w-3 h-3 text-primary" />
-            <span className="text-[9px] font-bold text-primary uppercase">Engine Status</span>
+            <span className="text-[9px] font-bold text-primary uppercase">Trạng thái Engine</span>
           </div>
           <p className="text-[10px] text-muted-foreground leading-tight">
-            v2.4.0 <span className="text-accent ml-1 font-bold">Stable</span>
+            v2.4.0 <span className="text-accent ml-1 font-bold">Ổn định</span>
           </p>
         </div>
       </SidebarFooter>
