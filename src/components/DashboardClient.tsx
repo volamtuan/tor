@@ -36,7 +36,7 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// Địa chỉ Backend Flask
+// Địa chỉ Backend Flask (Mặc định là localhost:5757)
 const API_BASE = 'http://127.0.0.1:5757';
 
 export default function DashboardClient() {
@@ -54,13 +54,12 @@ export default function DashboardClient() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
 
-  // Tránh Hydration mismatch bằng cách khởi tạo dữ liệu ngẫu nhiên sau khi mount
+  // Tránh Hydration mismatch
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setServerIp(window.location.hostname);
     }
     
-    // Khởi tạo stats ban đầu
     setStats(prev => ({
       ...prev,
       cpu: Math.floor(Math.random() * 15) + 5,
@@ -118,7 +117,7 @@ export default function DashboardClient() {
         setInstances(mapped);
       }
     } catch (e) {
-      // Bỏ qua lỗi fetch load failed khi Backend chưa sẵn sàng
+      // Bỏ qua lỗi kết nối ngầm
     }
   }, [serverIp]);
 
@@ -135,31 +134,24 @@ export default function DashboardClient() {
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
-    toast({ title: "Đang triển khai", description: `Đang tạo ${config.count} tunnel mới (${config.ipMode})...` });
+    toast({ title: "Đang triển khai", description: `Đang tạo ${config.count} tunnel mới...` });
 
     try {
       const res = await fetch(`${API_BASE}/api/create_tunnels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          count: config.count,
-          country: config.country,
-          auth: config.authEnabled,
-          username: config.username,
-          password: config.password,
-          ipMode: config.ipMode
-        })
-      });
+        body: JSON.stringify(config)
+      }).catch(() => null);
       
-      if (!res.ok) throw new Error("Network response was not ok");
+      if (!res || !res.ok) throw new Error("Load failed");
       const data = await res.json();
       
       if (data.ok) {
-        toast({ title: "Thành công", description: `Đã tạo các cổng: ${data.created.join(', ')}` });
+        toast({ title: "Thành công", description: `Đã khởi tạo các cổng mới.` });
         loadInstances();
       }
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask (Load Failed)", variant: "destructive" });
+      toast({ title: "Lỗi kết nối", description: "Không thể kết nối đến Backend Flask. Vui lòng kiểm tra Docker hoặc Service.", variant: "destructive" });
     } finally {
       setIsDeploying(false);
     }
@@ -173,9 +165,9 @@ export default function DashboardClient() {
       else if (act === 'check') endpoint = `/api/check_proxy/${port}`;
 
       const res = await fetch(`${API_BASE}${endpoint}`).catch(() => null);
-      if (!res) throw new Error("Kết nối thất bại");
+      if (!res || !res.ok) throw new Error("Load failed");
       
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json();
       
       if (act === 'check') {
         toast({ 
@@ -184,23 +176,23 @@ export default function DashboardClient() {
           variant: data.status === 'LIVE' ? "default" : "destructive"
         });
       } else {
-        toast({ title: "Thành công", description: `Đã thực hiện: ${act} trên cổng ${port}` });
+        toast({ title: "Thành công", description: `Thao tác ${act} hoàn tất.` });
       }
       loadInstances();
     } catch (e) {
-      toast({ title: "Lỗi thao tác", description: "Không thể thực thi lệnh trên Backend", variant: "destructive" });
+      toast({ title: "Lỗi thao tác", description: "Không thể gửi lệnh đến Backend.", variant: "destructive" });
     }
   };
 
   const handleGlobalAction = async (action: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/${action}`, { method: 'POST' }).catch(() => null);
-      if (!res || !res.ok) throw new Error("API request failed");
+      if (!res || !res.ok) throw new Error("Load failed");
       const data = await res.json();
-      toast({ title: "Thông báo hệ thống", description: data.message });
+      toast({ title: "Hệ thống", description: data.message });
       refreshStats();
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Không thể kết nối đến Backend Flask.", variant: "destructive" });
     }
   };
 
@@ -214,13 +206,13 @@ export default function DashboardClient() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `proxies_${new Date().getTime()}.txt`;
+    a.download = `tor_proxies_${new Date().getTime()}.txt`;
     a.click();
     toast({ title: "Thành công", description: "Đã xuất danh sách Proxy" });
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10">
+    <div className="max-w-7xl mx-auto space-y-10 pb-20">
       <StatHeader stats={stats} onAction={handleGlobalAction} />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
