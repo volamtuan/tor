@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -36,7 +35,7 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// API_BASE should point to your Flask backend.
+// API_BASE points to backend service in Docker Compose
 const API_BASE = 'http://localhost:5757';
 
 export default function DashboardClient() {
@@ -58,6 +57,7 @@ export default function DashboardClient() {
     if (typeof window !== 'undefined') {
       setServerIp(window.location.hostname);
     }
+    // Set initial random stats to avoid hydration mismatch
     setStats(prev => ({
       ...prev,
       cpu: Math.floor(Math.random() * 15) + 5,
