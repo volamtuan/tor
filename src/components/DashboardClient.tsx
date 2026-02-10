@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -10,7 +11,7 @@ import { LogViewer } from '@/components/LogViewer';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LayoutDashboard, Terminal, Settings as SettingsIcon } from 'lucide-react';
+import { LayoutDashboard, Terminal, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
 
 export type AuthMode = 'NONE' | 'USER_PASS' | 'IP_WHITELIST';
 
@@ -52,16 +53,39 @@ export default function DashboardClient() {
   const [isDeploying, setIsDeploying] = useState(false);
   const [apiUrl, setApiUrl] = useState('');
 
+  // 1. Initial Mount and Load Data
   useEffect(() => {
     setIsMounted(true);
+    
+    // Load API URL
     const savedIp = localStorage.getItem('tor_api_url');
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const defaultIp = savedIp || `http://${currentHost}:5757`;
-    setApiUrl(defaultIp);
+    setApiUrl(savedIp || `http://${currentHost}:5757`);
     
+    // Load Instances
+    const savedInstances = localStorage.getItem('tor_instances');
+    if (savedInstances) {
+      try {
+        setInstances(JSON.parse(savedInstances));
+      } catch (e) {
+        console.error("Failed to parse instances", e);
+      }
+    }
+
+    // Load Blocked IPs
+    const savedBlocked = localStorage.getItem('tor_blocked_ips');
+    if (savedBlocked) {
+      try {
+        setBlockedIps(JSON.parse(savedBlocked));
+      } catch (e) {
+        console.error("Failed to parse blocked IPs", e);
+      }
+    }
+
+    // Initial stats
     setStats({
-      cpu: Math.floor(Math.random() * 15) + 5,
-      ram: Math.floor(Math.random() * 20) + 30,
+      cpu: Math.floor(Math.random() * 10) + 2,
+      ram: Math.floor(Math.random() * 15) + 25,
       torMem: 0,
       instances: 0,
     });
@@ -70,13 +94,29 @@ export default function DashboardClient() {
     return () => clearInterval(statsInterval);
   }, []);
 
+  // 2. Persistence Listeners
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('tor_instances', JSON.stringify(instances));
+      setStats(prev => ({
+        ...prev,
+        instances: instances.length,
+        torMem: instances.length * 12.5
+      }));
+    }
+  }, [instances, isMounted]);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('tor_blocked_ips', JSON.stringify(blockedIps));
+    }
+  }, [blockedIps, isMounted]);
+
   const refreshStats = () => {
     setStats(prev => ({
       ...prev,
-      cpu: Math.floor(Math.random() * 20) + 5,
-      ram: Math.floor(Math.random() * 25) + 30,
-      torMem: instances.length * 12,
-      instances: instances.length,
+      cpu: Math.floor(Math.random() * 15) + 2,
+      ram: Math.floor(Math.random() * 20) + 25,
     }));
   };
 
@@ -109,15 +149,19 @@ export default function DashboardClient() {
     setTimeout(() => {
       const vpsIpBase = apiUrl.replace('http://', '').split(':')[0] || "127.0.0.1";
       const newInstances: Instance[] = Array.from({ length: config.count }).map((_, i) => {
-        const port = 8000 + instances.length + i;
+        const nextPort = instances.length > 0 
+          ? Math.max(...instances.map(inst => inst.port)) + 1 
+          : 8000;
+        
+        const port = nextPort + i;
         const country = config.country === 'Random' 
-          ? ['Vietnam', 'United States', 'Germany', 'Japan', 'France'][Math.floor(Math.random() * 5)] 
+          ? ['Vietnam', 'United States', 'Germany', 'Japan', 'France', 'Singapore'][Math.floor(Math.random() * 6)] 
           : config.country;
 
         return {
           port,
           status: 'LIVE',
-          externalStatus: 'READY',
+          externalStatus: 'WAITING',
           vpsIp: vpsIpBase,
           exitIp: `${Math.floor(Math.random() * 220)}.${Math.floor(Math.random() * 220)}.x.x`,
           ping: Math.floor(Math.random() * 250) + 50,
@@ -130,6 +174,7 @@ export default function DashboardClient() {
           allowedIps: config.allowedIps,
         };
       });
+      
       setInstances(prev => [...prev, ...newInstances].sort((a, b) => a.port - b.port));
       setIsDeploying(false);
       toast({ title: "Triển khai hoàn tất", description: `Đã kích hoạt thành công.` });
@@ -179,52 +224,70 @@ export default function DashboardClient() {
     }, 3000);
   };
 
+  const handleCleanup = () => {
+    setInstances([]);
+    toast({ title: "Đã dọn dẹp", description: "Xóa toàn bộ Proxy và làm sạch dữ liệu tạm." });
+  };
+
   if (!isMounted) return null;
 
   return (
-    <div className="max-w-7xl mx-auto pb-20">
+    <div className="max-w-7xl mx-auto pb-20 px-4">
       <StatHeader stats={stats} />
       
       <Tabs defaultValue="dashboard" className="w-full space-y-6">
-        <TabsList className="bg-card/50 border border-border p-1 h-12">
-          <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary gap-2 px-6">
+        <TabsList className="bg-card/50 border border-border/50 p-1 h-14 backdrop-blur-md rounded-2xl">
+          <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-8 rounded-xl font-bold transition-all">
             <LayoutDashboard className="w-4 h-4" /> BẢNG ĐIỀU KHIỂN
           </TabsTrigger>
-          <TabsTrigger value="logs" className="data-[state=active]:bg-primary gap-2 px-6">
-            <Terminal className="w-4 h-4" /> NHẬT KÝ & TRUY CẬP
+          <TabsTrigger value="logs" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-8 rounded-xl font-bold transition-all">
+            <Terminal className="w-4 h-4" /> NHẬT KÝ TRUY CẬP
           </TabsTrigger>
-          <TabsTrigger value="settings" className="data-[state=active]:bg-primary gap-2 px-6">
+          <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-8 rounded-xl font-bold transition-all">
             <SettingsIcon className="w-4 h-4" /> CÀI ĐẶT HỆ THỐNG
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="dashboard" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="grid grid-cols-12 gap-8">
             <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-6">
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
-                onCleanup={() => setInstances([])} 
-                onExport={() => {}} 
-                onRotateAll={() => {}} 
+                onCleanup={handleCleanup} 
+                onExport={() => {
+                  const data = JSON.stringify(instances, null, 2);
+                  const blob = new Blob([data], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `tor-proxies-${new Date().toISOString().slice(0,10)}.json`;
+                  a.click();
+                }} 
+                onRotateAll={handleCheckAll} 
                 onCheckAll={handleCheckAll}
               />
             </div>
             <div className="col-span-12 lg:col-span-8 xl:col-span-9">
-              <ProxyTable instances={instances} onAction={handleAction} onRefresh={() => {}} />
+              <ProxyTable 
+                instances={instances} 
+                onAction={handleAction} 
+                onRefresh={() => handleCheckAll()} 
+              />
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="logs" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="logs" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <LogViewer onBlockIp={handleBlockIp} />
         </TabsContent>
 
-        <TabsContent value="settings" className="animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="settings" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <SystemSettings 
             apiUrl={apiUrl} 
             onUpdateApiUrl={(url) => {
               setApiUrl(url);
               localStorage.setItem('tor_api_url', url);
+              toast({ title: "Cập nhật thành công", description: "Địa chỉ Backend đã được lưu." });
             }} 
             blockedIps={blockedIps}
             onUnblockIp={handleUnblockIp}
