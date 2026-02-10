@@ -1,26 +1,24 @@
-FROM debian:bullseye-slim
+FROM python:3.9-slim
 
-# Cài đặt Tor và Python
+# Cài đặt Tor và các công cụ cần thiết
 RUN apt-get update && apt-get install -y \
     tor \
-    python3 \
-    python3-pip \
-    curl \
-    net-tools \
+    netcat-openbsd \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Cài đặt thư viện Python
-RUN pip3 install flask flask-cors requests
+# Copy requirements và cài đặt (nếu có file requirements.txt)
+# Ở đây ta cài trực tiếp các thư viện cần thiết
+RUN pip install flask flask-cors
 
-COPY app.py .
+COPY . .
 
-# Cấu hình Tor mặc định
-RUN echo "SocksPort 0" >> /etc/tor/torrc
-RUN echo "ControlPort 9051" >> /etc/tor/torrc
-RUN echo "CookieAuthentication 0" >> /etc/tor/torrc
+# Đảm bảo Tor có quyền ghi vào thư mục data
+RUN mkdir -p /var/lib/tor && chown -R root:root /var/lib/tor && chmod -R 700 /var/lib/tor
+
+EXPOSE 5757
 
 # Chạy backend
-CMD ["python3", "app.py"]
+CMD ["python", "app.py"]
