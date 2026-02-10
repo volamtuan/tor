@@ -19,7 +19,7 @@ interface StatHeaderProps {
 }
 
 export function StatHeader({ stats, onAction }: StatHeaderProps) {
-  const isActive = stats.torStatus === 'active';
+  const isActive = stats.torStatus === 'active' || stats.torStatus === 'LIVE';
 
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -36,13 +36,13 @@ export function StatHeader({ stats, onAction }: StatHeaderProps) {
             </Badge>
           </div>
           <div className="flex gap-1 ml-4">
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-400 hover:bg-emerald-400/10" onClick={() => onAction('start')}>
+            <Button size="icon" variant="ghost" title="Start System" className="h-7 w-7 text-emerald-400 hover:bg-emerald-400/10" onClick={() => onAction('start')}>
               <Play className="w-4 h-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-amber-400 hover:bg-amber-400/10" onClick={() => onAction('restart')}>
+            <Button size="icon" variant="ghost" title="Restart System" className="h-7 w-7 text-amber-400 hover:bg-amber-400/10" onClick={() => onAction('restart')}>
               <RotateCw className="w-4 h-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => onAction('stop')}>
+            <Button size="icon" variant="ghost" title="Stop System" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => onAction('stop')}>
               <Power className="w-4 h-4" />
             </Button>
           </div>
@@ -73,10 +73,10 @@ function StatCard({ label, value, subValue, icon, className }: { label: string; 
     <Card className={`glass-card px-6 py-4 min-w-[180px] flex flex-col items-center justify-center transition-all hover:scale-105 ${className}`}>
       <div className="flex items-center gap-2 mb-1">
         {icon}
-        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{label}</p>
+        <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{label}</div>
       </div>
-      <p className="text-2xl font-mono font-bold text-white leading-none">{value}</p>
-      {subValue && <p className="text-[10px] font-mono text-muted-foreground mt-1 uppercase">{subValue}</p>}
+      <div className="text-2xl font-mono font-bold text-white leading-none">{value}</div>
+      {subValue && <div className="text-[10px] font-mono text-muted-foreground mt-1 uppercase">{subValue}</div>}
     </Card>
   );
 }

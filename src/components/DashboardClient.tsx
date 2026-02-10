@@ -36,8 +36,9 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// Địa chỉ Backend Flask (Mặc định là localhost:5757)
-const API_BASE = 'http://127.0.0.1:5757';
+// API_BASE should point to your Flask backend. 
+// In Docker, you might use localhost:5757 or a specific container name.
+const API_BASE = 'http://localhost:5757';
 
 export default function DashboardClient() {
   const { toast } = useToast();
@@ -54,7 +55,7 @@ export default function DashboardClient() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
 
-  // Tránh Hydration mismatch
+  // Initialize data on mount to avoid hydration mismatch
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setServerIp(window.location.hostname);
@@ -63,7 +64,7 @@ export default function DashboardClient() {
     setStats(prev => ({
       ...prev,
       cpu: Math.floor(Math.random() * 15) + 5,
-      ram: Math.floor(Math.random() * 30) + 40,
+      ram: Math.floor(Math.random() * 10) + 30,
     }));
   }, []);
 
@@ -79,9 +80,10 @@ export default function DashboardClient() {
       setStats(prev => ({
         ...prev,
         torStatus: data.status || 'unknown',
-        cpu: Math.floor(Math.random() * 15) + 5,
-        ram: Math.floor(Math.random() * 30) + 40,
-        torMem: instances.length * 24,
+        // Simulate dynamic stats
+        cpu: Math.floor(Math.random() * 20) + 10,
+        ram: Math.floor(Math.random() * 10) + 40,
+        torMem: instances.length * 28, // Approx RAM per instance
         instances: instances.length
       }));
     } catch (e) {
@@ -117,7 +119,7 @@ export default function DashboardClient() {
         setInstances(mapped);
       }
     } catch (e) {
-      // Bỏ qua lỗi kết nối ngầm
+      // Ignore silent errors for periodic polling
     }
   }, [serverIp]);
 
@@ -128,13 +130,13 @@ export default function DashboardClient() {
     const interval = setInterval(() => {
       refreshStats();
       loadInstances();
-    }, 5000);
+    }, 6000);
     return () => clearInterval(interval);
   }, [refreshStats, loadInstances]);
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
-    toast({ title: "Đang triển khai", description: `Đang tạo ${config.count} tunnel mới...` });
+    toast({ title: "Đang triển khai", description: `Đang khởi tạo ${config.count} tunnel (${config.ipMode === 'v6only' ? 'Chỉ IPv6' : 'Đa giao thức'})...` });
 
     try {
       const res = await fetch(`${API_BASE}/api/create_tunnels`, {
@@ -143,15 +145,19 @@ export default function DashboardClient() {
         body: JSON.stringify(config)
       }).catch(() => null);
       
-      if (!res || !res.ok) throw new Error("Load failed");
+      if (!res || !res.ok) throw new Error("Connection failed");
       const data = await res.json();
       
       if (data.ok) {
-        toast({ title: "Thành công", description: `Đã khởi tạo các cổng mới.` });
+        toast({ title: "Thành công", description: `Đã kích hoạt các cổng: ${(data.created || []).join(', ')}` });
         loadInstances();
       }
     } catch (e) {
-      toast({ title: "Lỗi kết nối", description: "Không thể kết nối đến Backend Flask. Vui lòng kiểm tra Docker hoặc Service.", variant: "destructive" });
+      toast({ 
+        title: "Lỗi kết nối", 
+        description: "Không thể gửi lệnh đến Backend. Hãy đảm bảo Backend Flask đang chạy.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsDeploying(false);
     }
@@ -160,34 +166,35 @@ export default function DashboardClient() {
   const handleAction = async (act: string, port: number) => {
     try {
       let endpoint = '';
-      if (act === 'restart' || act === 'rotate') endpoint = `/api/newnym/${port}`;
+      if (act === 'rotate') endpoint = `/api/newnym/${port}`;
       else if (act === 'delete' || act === 'stop') endpoint = `/api/stop_port/${port}`;
       else if (act === 'check') endpoint = `/api/check_proxy/${port}`;
+      else if (act === 'start') endpoint = `/api/start_port/${port}`;
 
       const res = await fetch(`${API_BASE}${endpoint}`).catch(() => null);
-      if (!res || !res.ok) throw new Error("Load failed");
+      if (!res || !res.ok) throw new Error("Action failed");
       
       const data = await res.json();
       
       if (act === 'check') {
         toast({ 
           title: data.status === 'LIVE' ? "Kết nối OK" : "Lỗi kết nối", 
-          description: `IP: ${data.ip || 'N/A'} - Ping: ${data.ping || 0}ms`,
+          description: `IP: ${data.ip || '---'} | Ping: ${data.ping || 0}ms`,
           variant: data.status === 'LIVE' ? "default" : "destructive"
         });
       } else {
-        toast({ title: "Thành công", description: `Thao tác ${act} hoàn tất.` });
+        toast({ title: "Thành công", description: `Lệnh ${act} cho cổng ${port} đã được gửi.` });
       }
       loadInstances();
     } catch (e) {
-      toast({ title: "Lỗi thao tác", description: "Không thể gửi lệnh đến Backend.", variant: "destructive" });
+      toast({ title: "Lỗi thao tác", description: "Backend không phản hồi.", variant: "destructive" });
     }
   };
 
   const handleGlobalAction = async (action: string) => {
     try {
       const res = await fetch(`${API_BASE}/api/${action}`, { method: 'POST' }).catch(() => null);
-      if (!res || !res.ok) throw new Error("Load failed");
+      if (!res || !res.ok) throw new Error("Global action failed");
       const data = await res.json();
       toast({ title: "Hệ thống", description: data.message });
       refreshStats();
@@ -198,7 +205,7 @@ export default function DashboardClient() {
 
   const handleExport = () => {
     if (instances.length === 0) {
-      toast({ title: "Thông báo", description: "Không có proxy nào để xuất!", variant: "destructive" });
+      toast({ title: "Thông báo", description: "Danh sách trống!", variant: "destructive" });
       return;
     }
     const text = instances.map(p => `${p.vpsIp}:${p.port}:${p.username || ''}:${p.password || ''}`).join('\n');
@@ -206,7 +213,7 @@ export default function DashboardClient() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tor_proxies_${new Date().getTime()}.txt`;
+    a.download = `tor_proxies_${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
     toast({ title: "Thành công", description: "Đã xuất danh sách Proxy" });
   };

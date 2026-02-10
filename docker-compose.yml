@@ -1,21 +1,28 @@
+
 version: '3.8'
 
 services:
+  # Frontend: NextJS Application
   frontend:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "9002:9002"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:5757
     restart: always
 
-  # Backend Flask (Cần có Dockerfile riêng trong thư mục backend của bạn)
-  # backend:
-  #   build: ./backend
-  #   privileged: true # Cần thiết để quản lý Tor và systemctl/service
-  #   ports:
-  #     - "5757:5757"
-  #   volumes:
-  #     - /etc/tor:/etc/tor
-  #     - /var/lib/tor:/var/lib/tor
-  #   restart: always
+  # Backend: Flask API + Tor Service
+  # Note: Ensure you have a Dockerfile in your backend directory 
+  # that installs Tor, Python, and the Flask dependencies.
+  backend:
+    build: ./backend
+    privileged: true # Required for managing Tor processes and interfaces
+    network_mode: "host" # Allows Tor to handle IPv6/IPv4 natively on host ports
+    ports:
+      - "5757:5757"
+    volumes:
+      - /etc/tor:/etc/tor
+      - /var/lib/tor:/var/lib/tor
+    restart: always
