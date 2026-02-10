@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -53,16 +52,13 @@ export default function DashboardClient() {
   const [isDeploying, setIsDeploying] = useState(false);
   const [apiUrl, setApiUrl] = useState('');
 
-  // 1. Initial Mount and Load Data
   useEffect(() => {
     setIsMounted(true);
     
-    // Load API URL
     const savedIp = localStorage.getItem('tor_api_url');
     const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     setApiUrl(savedIp || `http://${currentHost}:5757`);
     
-    // Load Instances
     const savedInstances = localStorage.getItem('tor_instances');
     if (savedInstances) {
       try {
@@ -72,7 +68,6 @@ export default function DashboardClient() {
       }
     }
 
-    // Load Blocked IPs
     const savedBlocked = localStorage.getItem('tor_blocked_ips');
     if (savedBlocked) {
       try {
@@ -82,7 +77,6 @@ export default function DashboardClient() {
       }
     }
 
-    // Initial stats
     setStats({
       cpu: Math.floor(Math.random() * 10) + 2,
       ram: Math.floor(Math.random() * 15) + 25,
@@ -94,7 +88,6 @@ export default function DashboardClient() {
     return () => clearInterval(statsInterval);
   }, []);
 
-  // 2. Persistence Listeners
   useEffect(() => {
     if (isMounted) {
       localStorage.setItem('tor_instances', JSON.stringify(instances));
@@ -232,25 +225,25 @@ export default function DashboardClient() {
   if (!isMounted) return null;
 
   return (
-    <div className="max-w-7xl mx-auto pb-20 px-4">
+    <div className="max-w-full mx-auto pb-10 px-1">
       <StatHeader stats={stats} />
       
-      <Tabs defaultValue="dashboard" className="w-full space-y-6">
-        <TabsList className="bg-card/50 border border-border/50 p-1 h-14 backdrop-blur-md rounded-2xl">
-          <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-8 rounded-xl font-bold transition-all">
-            <LayoutDashboard className="w-4 h-4" /> BẢNG ĐIỀU KHIỂN
+      <Tabs defaultValue="dashboard" className="w-full space-y-4">
+        <TabsList className="bg-card/50 border border-border/50 p-1 h-11 backdrop-blur-md rounded-xl">
+          <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-6 rounded-lg font-bold transition-all text-xs">
+            <LayoutDashboard className="w-3.5 h-3.5" /> BẢNG ĐIỀU KHIỂN
           </TabsTrigger>
-          <TabsTrigger value="logs" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-8 rounded-xl font-bold transition-all">
-            <Terminal className="w-4 h-4" /> NHẬT KÝ TRUY CẬP
+          <TabsTrigger value="logs" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-6 rounded-lg font-bold transition-all text-xs">
+            <Terminal className="w-3.5 h-3.5" /> NHẬT KÝ
           </TabsTrigger>
-          <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-white gap-2 px-8 rounded-xl font-bold transition-all">
-            <SettingsIcon className="w-4 h-4" /> CÀI ĐẶT HỆ THỐNG
+          <TabsTrigger value="settings" className="data-[state=active]:bg-primary data={state=active]:text-white gap-2 px-6 rounded-lg font-bold transition-all text-xs">
+            <SettingsIcon className="w-3.5 h-3.5" /> HỆ THỐNG
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="grid grid-cols-12 gap-8">
-            <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-6">
+        <TabsContent value="dashboard" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-4">
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
                 onCleanup={handleCleanup} 
@@ -277,11 +270,11 @@ export default function DashboardClient() {
           </div>
         </TabsContent>
 
-        <TabsContent value="logs" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <TabsContent value="logs" className="animate-in fade-in duration-300">
           <LogViewer onBlockIp={handleBlockIp} />
         </TabsContent>
 
-        <TabsContent value="settings" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <TabsContent value="settings" className="animate-in fade-in duration-300">
           <SystemSettings 
             apiUrl={apiUrl} 
             onUpdateApiUrl={(url) => {

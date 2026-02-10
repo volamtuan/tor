@@ -27,64 +27,64 @@ import {
 export function AppSidebar() {
   return (
     <Sidebar className="border-r border-border/40 bg-card/30 backdrop-blur-xl">
-      <SidebarHeader className="p-6">
+      <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-lg shadow-lg shadow-primary/20">
-            <Shield className="w-6 h-6 text-white" />
+          <div className="bg-primary p-1.5 rounded-lg shadow-lg shadow-primary/20">
+            <Shield className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-black italic tracking-tighter text-white">
-            TOR<span className="text-primary">MASTER</span>
+          <h2 className="text-lg font-black italic tracking-tighter text-white">
+            Tor<span className="text-primary">Proxy</span>
           </h2>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-4">
+      <SidebarContent className="px-3">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Hệ Thống Chính</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Hệ Thống Chính</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton isActive tooltip="Bảng điều khiển">
                   <LayoutDashboard className="w-4 h-4" />
-                  <span className="font-bold">BẢNG ĐIỀU KHIỂN</span>
+                  <span className="font-bold text-xs uppercase">Bảng điều khiển</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Danh sách Proxy">
                   <Globe className="w-4 h-4" />
-                  <span className="font-bold">DANH SÁCH PROXY</span>
+                  <span className="font-bold text-xs uppercase">Danh sách Proxy</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Cấu hình hệ thống">
                   <Settings className="w-4 h-4" />
-                  <span className="font-bold">CÀI ĐẶT</span>
+                  <span className="font-bold text-xs uppercase">Cài đặt</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-2">Nâng Cao</SidebarGroupLabel>
+        <SidebarGroup className="mt-2">
+          <SidebarGroupLabel className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Nâng Cao</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Quản lý khóa">
                   <Lock className="w-4 h-4" />
-                  <span className="font-bold">KHÓA XÁC THỰC</span>
+                  <span className="font-bold text-xs uppercase">Khóa xác thực</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Nhật ký">
                   <History className="w-4 h-4" />
-                  <span className="font-bold">LỊCH SỬ HOẠT ĐỘNG</span>
+                  <span className="font-bold text-xs uppercase">Lịch sử</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton tooltip="Cửa sổ lệnh">
                   <Terminal className="w-4 h-4" />
-                  <span className="font-bold">TRÌNH LỆNH CLI</span>
+                  <span className="font-bold text-xs uppercase">CLI</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -92,14 +92,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-6 border-t border-border/20">
-        <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
-          <div className="flex items-center gap-2 mb-2">
+      <SidebarFooter className="p-4 border-t border-border/20">
+        <div className="bg-primary/5 rounded-xl p-3 border border-primary/20">
+          <div className="flex items-center gap-2 mb-1">
             <Cpu className="w-3 h-3 text-primary" />
-            <span className="text-[10px] font-bold text-primary uppercase">Trạng Thái Engine</span>
+            <span className="text-[9px] font-bold text-primary uppercase">Engine Status</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Phiên bản 2.4.0 <span className="text-accent ml-1 font-bold">Ổn định</span>
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            v2.4.0 <span className="text-accent ml-1 font-bold">Stable</span>
           </p>
         </div>
       </SidebarFooter>

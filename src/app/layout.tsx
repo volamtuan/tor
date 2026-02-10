@@ -4,7 +4,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 
 export const metadata: Metadata = {
-  title: 'TorMaster Pro Dashboard',
+  title: 'TorProxy Dashboard',
   description: 'Advanced Tor instance management system',
 };
 
@@ -24,7 +24,7 @@ export default function RootLayout({
         <SidebarProvider>
           <div className="flex min-h-screen w-full">
             <AppSidebar />
-            <main className="flex-1 overflow-auto p-4 md:p-8 lg:p-12">
+            <main className="flex-1 overflow-auto p-2 md:p-4 lg:p-6">
               {children}
             </main>
           </div>
