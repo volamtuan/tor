@@ -1,0 +1,32 @@
+
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9005:9005"
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5757
+    networks:
+      - torproxy-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5757:5757"
+    volumes:
+      - ./tor_data:/app/tor_data
+    privileged: true
+    restart: always
+    networks:
+      - torproxy-network
+
+networks:
+  torproxy-network:
+    driver: bridge
