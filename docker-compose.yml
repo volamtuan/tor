@@ -12,16 +12,15 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:5757
     restart: always
+    depends_on:
+      - backend
 
   # Backend: Flask API + Tor Service
-  # Lưu ý: Bạn cần có Dockerfile trong thư mục ./backend để cài đặt Tor và Python
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     privileged: true 
+    # Dùng host mode để Tor dễ dàng quản lý các cổng và IPv6 của VPS
     network_mode: "host" 
-    ports:
-      - "5757:5757"
-    volumes:
-      - /etc/tor:/etc/tor
-      - /var/lib/tor:/var/lib/tor
     restart: always

@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -35,7 +36,7 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// API_BASE points to backend service in Docker Compose
+// API_BASE points to backend service. In Docker environment, usually localhost if using network host mode
 const API_BASE = 'http://localhost:5757';
 
 export default function DashboardClient() {
@@ -57,12 +58,6 @@ export default function DashboardClient() {
     if (typeof window !== 'undefined') {
       setServerIp(window.location.hostname);
     }
-    // Set initial random stats to avoid hydration mismatch
-    setStats(prev => ({
-      ...prev,
-      cpu: Math.floor(Math.random() * 15) + 5,
-      ram: Math.floor(Math.random() * 10) + 30,
-    }));
   }, []);
 
   const refreshStats = useCallback(async () => {
@@ -164,7 +159,6 @@ export default function DashboardClient() {
       if (act === 'rotate') endpoint = `/api/newnym/${port}`;
       else if (act === 'delete' || act === 'stop') endpoint = `/api/stop_port/${port}`;
       else if (act === 'check') endpoint = `/api/check_proxy/${port}`;
-      else if (act === 'start') endpoint = `/api/start_port/${port}`;
 
       const res = await fetch(`${API_BASE}${endpoint}`).catch(() => null);
       if (!res || !res.ok) throw new Error("Action failed");
