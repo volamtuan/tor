@@ -36,8 +36,7 @@ export type SystemStats = {
   torStatus: string;
 };
 
-// API_BASE should point to your Flask backend. 
-// In Docker, you might use localhost:5757 or a specific container name.
+// API_BASE should point to your Flask backend.
 const API_BASE = 'http://localhost:5757';
 
 export default function DashboardClient() {
@@ -55,12 +54,10 @@ export default function DashboardClient() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [isDeploying, setIsDeploying] = useState(false);
 
-  // Initialize data on mount to avoid hydration mismatch
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setServerIp(window.location.hostname);
     }
-    
     setStats(prev => ({
       ...prev,
       cpu: Math.floor(Math.random() * 15) + 5,
@@ -80,10 +77,9 @@ export default function DashboardClient() {
       setStats(prev => ({
         ...prev,
         torStatus: data.status || 'unknown',
-        // Simulate dynamic stats
         cpu: Math.floor(Math.random() * 20) + 10,
         ram: Math.floor(Math.random() * 10) + 40,
-        torMem: instances.length * 28, // Approx RAM per instance
+        torMem: instances.length * 28,
         instances: instances.length
       }));
     } catch (e) {
@@ -119,14 +115,13 @@ export default function DashboardClient() {
         setInstances(mapped);
       }
     } catch (e) {
-      // Ignore silent errors for periodic polling
+      // Silently fail for polling
     }
   }, [serverIp]);
 
   useEffect(() => {
     refreshStats();
     loadInstances();
-    
     const interval = setInterval(() => {
       refreshStats();
       loadInstances();
@@ -136,7 +131,7 @@ export default function DashboardClient() {
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
-    toast({ title: "Đang triển khai", description: `Đang khởi tạo ${config.count} tunnel (${config.ipMode === 'v6only' ? 'Chỉ IPv6' : 'Đa giao thức'})...` });
+    toast({ title: "Đang triển khai", description: `Đang khởi tạo ${config.count} tunnel...` });
 
     try {
       const res = await fetch(`${API_BASE}/api/create_tunnels`, {

@@ -14,12 +14,11 @@ services:
     restart: always
 
   # Backend: Flask API + Tor Service
-  # Note: Ensure you have a Dockerfile in your backend directory 
-  # that installs Tor, Python, and the Flask dependencies.
+  # Lưu ý: Bạn cần có Dockerfile trong thư mục ./backend để cài đặt Tor và Python
   backend:
     build: ./backend
-    privileged: true # Required for managing Tor processes and interfaces
-    network_mode: "host" # Allows Tor to handle IPv6/IPv4 natively on host ports
+    privileged: true 
+    network_mode: "host" 
     ports:
       - "5757:5757"
     volumes:

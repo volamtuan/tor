@@ -54,7 +54,7 @@ export function StatHeader({ stats, onAction }: StatHeaderProps) {
           label="CPU / RAM" 
           value={`${stats.cpu}% / ${stats.ram}%`} 
           icon={<Cpu className="w-4 h-4 text-primary" />}
-          className="status-glow-indigo"
+          className="status-glow-emerald"
         />
         <StatCard 
           label="Proxy Đang Chạy" 
