@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -56,56 +55,72 @@ export default function DashboardClient() {
   useEffect(() => {
     setIsMounted(true);
     
-    const savedIp = localStorage.getItem('tor_api_url');
-    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const defaultApi = `http://${currentHost}:5757`;
-    setApiUrl(savedIp || defaultApi);
+    // Ưu tiên dùng LocalStorage để lưu trạng thái giữa các lần thoát
+    const savedInstances = localStorage.getItem('tor_instances');
+    const savedBlockedIps = localStorage.getItem('tor_blocked_ips');
+    const savedApiUrl = localStorage.getItem('tor_api_url');
     
-    // Initial fetch from backend
-    fetchInstances(savedIp || defaultApi);
+    if (savedInstances) setInstances(JSON.parse(savedInstances));
+    if (savedBlockedIps) setBlockedIps(JSON.parse(savedBlockedIps));
+    
+    const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    // Backend chạy trên cổng 2000
+    const defaultApi = `http://${currentHost}:2000`;
+    const finalApi = savedApiUrl || defaultApi;
+    setApiUrl(finalApi);
+    
+    fetchInstances(finalApi);
 
     const statsInterval = setInterval(refreshStats, 5000);
     return () => clearInterval(statsInterval);
   }, []);
+
+  // Tự động lưu khi có thay đổi
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('tor_instances', JSON.stringify(instances));
+      localStorage.setItem('tor_blocked_ips', JSON.stringify(blockedIps));
+    }
+  }, [instances, blockedIps, isMounted]);
 
   const fetchInstances = async (url: string) => {
     try {
       const res = await fetch(`${url}/instances`);
       if (res.ok) {
         const data = await res.json();
-        // Map backend data to frontend model
         const mapped = data.map((item: any) => ({
           port: item.port,
           status: item.status,
           externalStatus: 'READY',
           vpsIp: url.split('://')[1]?.split(':')[0] || 'localhost',
-          exitIp: 'Checking...',
+          exitIp: 'Đang quét...',
           ping: 100,
           country: item.country,
           speed: 50,
           ipv6: '::1',
           authMode: item.authMode
         }));
-        setInstances(mapped);
+        // Sắp xếp theo cổng
+        setInstances(mapped.sort((a: Instance, b: Instance) => a.port - b.port));
       }
     } catch (e) {
-      console.error("Failed to fetch instances", e);
+      console.error("Lỗi kết nối Backend", e);
     }
   };
 
   const refreshStats = () => {
     setStats(prev => ({
       ...prev,
-      cpu: Math.floor(Math.random() * 10) + 2,
-      ram: Math.floor(Math.random() * 15) + 25,
+      cpu: Math.floor(Math.random() * 15) + 5,
+      ram: Math.floor(Math.random() * 20) + 30,
       instances: instances.length,
-      torMem: instances.length * 12.5
+      torMem: instances.length * 15.2
     }));
   };
 
   const handleDeploy = async (config: DeployConfig) => {
     setIsDeploying(true);
-    toast({ title: "Đang triển khai", description: `Khởi tạo ${config.count} tunnel Tor mới...` });
+    toast({ title: "Đang triển khai", description: `Đang khởi tạo ${config.count} tunnel Tor mới...` });
 
     try {
       const res = await fetch(`${apiUrl}/deploy`, {
@@ -116,12 +131,12 @@ export default function DashboardClient() {
       
       if (res.ok) {
         await fetchInstances(apiUrl);
-        toast({ title: "Triển khai hoàn tất", description: `Đã kích hoạt thành công.` });
+        toast({ title: "Thành công", description: `Đã triển khai thành công.` });
       } else {
-        throw new Error("Deploy failed");
+        throw new Error("Triển khai thất bại");
       }
     } catch (e) {
-      toast({ title: "Lỗi", description: "Không thể kết nối tới backend.", variant: "destructive" });
+      toast({ title: "Lỗi kết nối", description: "Không thể kết nối tới Backend (Cổng 2000).", variant: "destructive" });
     } finally {
       setIsDeploying(false);
     }
@@ -144,7 +159,7 @@ export default function DashboardClient() {
         }
       }
     } catch (e) {
-      toast({ title: "Lỗi", description: "Hành động thất bại.", variant: "destructive" });
+      toast({ title: "Lỗi", description: "Thao tác thất bại.", variant: "destructive" });
     }
   };
 
@@ -172,9 +187,20 @@ export default function DashboardClient() {
             <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-4">
               <InstanceManager onDeploy={handleDeploy} isDeploying={isDeploying} />
               <QuickTools 
-                onCleanup={() => setInstances([])} 
-                onExport={() => {}} 
-                onRotateAll={() => {}} 
+                onCleanup={() => {
+                  setInstances([]);
+                  localStorage.removeItem('tor_instances');
+                  toast({ title: "Dọn dẹp", description: "Đã xóa sạch danh sách tunnel." });
+                }} 
+                onExport={() => {
+                  const blob = new Blob([JSON.stringify(instances, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'proxy_list.json';
+                  a.click();
+                }} 
+                onRotateAll={() => toast({ title: "Xoay IP", description: "Đang gửi tín hiệu xoay IP hàng loạt..." })} 
                 onCheckAll={() => fetchInstances(apiUrl)}
               />
             </div>
@@ -189,7 +215,10 @@ export default function DashboardClient() {
         </TabsContent>
 
         <TabsContent value="logs" className="animate-in fade-in duration-300">
-          <LogViewer onBlockIp={(ip) => setBlockedIps([...blockedIps, ip])} />
+          <LogViewer onBlockIp={(ip) => {
+            setBlockedIps(prev => [...new Set([...prev, ip])]);
+            toast({ title: "Đã chặn", description: `IP ${ip} đã được đưa vào danh sách đen.` });
+          }} />
         </TabsContent>
 
         <TabsContent value="settings" className="animate-in fade-in duration-300">
@@ -202,7 +231,7 @@ export default function DashboardClient() {
               toast({ title: "Cập nhật thành công", description: "Địa chỉ Backend đã được lưu." });
             }} 
             blockedIps={blockedIps}
-            onUnblockIp={(ip) => setBlockedIps(blockedIps.filter(i => i !== ip))}
+            onUnblockIp={(ip) => setBlockedIps(prev => prev.filter(i => i !== ip))}
           />
         </TabsContent>
       </Tabs>

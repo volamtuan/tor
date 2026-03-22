@@ -5,7 +5,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 
 export const metadata: Metadata = {
   title: 'TorProxy Dashboard',
-  description: 'Advanced Tor instance management system',
+  description: 'Hệ thống quản lý tunnel Tor nâng cao',
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="vi" className="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

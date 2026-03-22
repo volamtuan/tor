@@ -1,4 +1,3 @@
-
 import os
 import subprocess
 import time
@@ -19,23 +18,12 @@ BASE_CONTROL_PORT = 9000
 # Store running instances: { port: { process: proc, control_port: cp } }
 instances = {}
 
-def get_exit_ip(port):
-    try:
-        proxies = {
-            'http': f'socks5h://127.0.0.1:{port}',
-            'https': f'socks5h://127.0.0.1:{port}'
-        }
-        import requests
-        resp = requests.get('https://api.ipify.org', proxies=proxies, timeout=10)
-        return resp.text
-    except:
-        return "Unknown"
-
 @app.route('/deploy', methods=['POST'])
 def deploy():
     data = request.json
     count = data.get('count', 1)
     auth_mode = data.get('authMode', 'NONE')
+    country = data.get('country', 'Random')
     
     new_ports = []
     for i in range(count):
@@ -51,13 +39,14 @@ def deploy():
             f.write(f"ControlPort 127.0.0.1:{control_port}\n")
             f.write(f"DataDirectory {data_dir}\n")
             f.write(f"CookieAuthentication 1\n")
+            # Bạn có thể thêm ExitNodes dựa trên country ở đây nếu cần
             
         proc = subprocess.Popen(["tor", "-f", torrc_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         instances[port] = {
             "process": proc,
             "control_port": control_port,
             "status": "LIVE",
-            "country": data.get('country', 'Random'),
+            "country": country,
             "authMode": auth_mode
         }
         new_ports.append(port)
@@ -98,10 +87,19 @@ def action():
     elif act == 'delete':
         proc = instances[port]["process"]
         proc.terminate()
+        # Clean up data dir
+        data_dir = os.path.join(TOR_DATA_DIR, f"tor_{port}")
+        if os.path.exists(data_dir):
+            shutil.rmtree(data_dir)
         del instances[port]
         return jsonify({"success": True})
         
     return jsonify({"error": "Invalid action"}), 400
 
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Đường dẫn không tồn tại. Vui lòng kiểm tra lại cổng kết nối API (Cổng 2000)."}), 404
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5757)
+    # Chạy trên cổng 2000 như yêu cầu
+    app.run(host='0.0.0.0', port=2000)

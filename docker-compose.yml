@@ -5,10 +5,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "9005:9005"
+      - "3000:3000"
     restart: always
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5757
+      - NEXT_PUBLIC_API_URL=http://localhost:2000
     networks:
       - torproxy-network
   backend:
@@ -16,7 +16,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "5757:5757"
+      - "2000:2000"
     volumes:
       - ./tor_data:/app/tor_data
     privileged: true
